@@ -192,6 +192,7 @@ export type Database = {
       orders: {
         Row: {
           address: string;
+          cancelled_at: string | null;
           confirmed_at: string | null;
           contact_name: string;
           contact_phone: string;
@@ -211,6 +212,7 @@ export type Database = {
         };
         Insert: {
           address: string;
+          cancelled_at?: string | null;
           confirmed_at?: string | null;
           contact_name: string;
           contact_phone: string;
@@ -230,6 +232,7 @@ export type Database = {
         };
         Update: {
           address?: string;
+          cancelled_at?: string | null;
           confirmed_at?: string | null;
           contact_name?: string;
           contact_phone?: string;
@@ -338,6 +341,96 @@ export type Database = {
         };
         Relationships: [];
       };
+      refund_requests: {
+        Row: {
+          account_number: string;
+          admin_note: string | null;
+          amount: number;
+          created_at: string;
+          customer_decided_at: string | null;
+          customer_decision: string | null;
+          follow_up_admin_note: string | null;
+          follow_up_note: string | null;
+          follow_up_requested_at: string | null;
+          follow_up_resolved_at: string | null;
+          follow_up_status: string | null;
+          id: string;
+          method: string;
+          order_id: string;
+          payment_id: string;
+          proof_path: string | null;
+          reason: string | null;
+          refund_reference: string | null;
+          refunded_at: string | null;
+          reviewed_at: string | null;
+          status: string;
+          user_id: string;
+        };
+        Insert: {
+          account_number: string;
+          admin_note?: string | null;
+          amount: number;
+          created_at?: string;
+          customer_decided_at?: string | null;
+          customer_decision?: string | null;
+          follow_up_admin_note?: string | null;
+          follow_up_note?: string | null;
+          follow_up_requested_at?: string | null;
+          follow_up_resolved_at?: string | null;
+          follow_up_status?: string | null;
+          id?: string;
+          method: string;
+          order_id: string;
+          payment_id: string;
+          proof_path?: string | null;
+          reason?: string | null;
+          refund_reference?: string | null;
+          refunded_at?: string | null;
+          reviewed_at?: string | null;
+          status?: string;
+          user_id: string;
+        };
+        Update: {
+          account_number?: string;
+          admin_note?: string | null;
+          amount?: number;
+          created_at?: string;
+          customer_decided_at?: string | null;
+          customer_decision?: string | null;
+          follow_up_admin_note?: string | null;
+          follow_up_note?: string | null;
+          follow_up_requested_at?: string | null;
+          follow_up_resolved_at?: string | null;
+          follow_up_status?: string | null;
+          id?: string;
+          method?: string;
+          order_id?: string;
+          payment_id?: string;
+          proof_path?: string | null;
+          reason?: string | null;
+          refund_reference?: string | null;
+          refunded_at?: string | null;
+          reviewed_at?: string | null;
+          status?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "refund_requests_order_id_fkey";
+            columns: ["order_id"];
+            isOneToOne: false;
+            referencedRelation: "orders";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "refund_requests_payment_id_fkey";
+            columns: ["payment_id"];
+            isOneToOne: false;
+            referencedRelation: "payments";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       user_roles: {
         Row: {
           id: string;
@@ -387,6 +480,35 @@ export type Database = {
       };
       set_delivery_date_open: {
         Args: { _delivery_date: string; _is_open: boolean };
+        Returns: undefined;
+      };
+      request_payment_refund: {
+        Args: {
+          _account_number: string;
+          _method: string;
+          _order_id: string;
+          _reason: string;
+        };
+        Returns: string;
+      };
+      review_refund_request: {
+        Args: { _approve: boolean; _note: string; _request_id: string };
+        Returns: undefined;
+      };
+      complete_payment_refund: {
+        Args: { _proof_path: string; _refund_reference: string; _request_id: string };
+        Returns: undefined;
+      };
+      request_refund_follow_up: {
+        Args: { _note: string; _request_id: string };
+        Returns: undefined;
+      };
+      resolve_refund_customer_decision: {
+        Args: { _decision: string; _request_id: string };
+        Returns: undefined;
+      };
+      resolve_refund_follow_up: {
+        Args: { _note: string; _request_id: string };
         Returns: undefined;
       };
       review_payment: {

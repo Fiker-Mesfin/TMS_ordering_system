@@ -58,6 +58,14 @@ SQL Editor:
    submitted and one reminder for an unpaid order after one hour. This uses
    Supabase's `pg_cron` extension to check every five minutes; enable that
    extension if your project does not have it enabled.
+6. `0005_refund_requests.sql` — customer refund requests for rejected payments,
+   admin approval/rejection, manually recorded refund transfer references and
+   private proof uploads, and customer follow-up for a transfer they cannot
+   find. Refund transfers are not sent automatically by the app.
+7. `0006_refund_customer_decision.sql` — after a refund is marked sent, lets the
+   customer report a missing transfer for investigation or confirm receipt and
+   either continue the same order with a new payment or close it and reorder.
+   Apply this migration after `0005_refund_requests.sql`.
 
 The first account created after applying the core migration is assigned the
 admin role by the database trigger. Sign in with that account to manage the
@@ -83,8 +91,12 @@ callback URL shown in Supabase's Google-provider settings.
   for bank transfer.
 - Follow order and payment progress, including verification, rejection notes,
   and scheduled delivery date/meal period.
+- Request a CBE or Telebirr refund after rejected payment details, track the
+  admin review, view transfer proof, and request an investigation if a marked
+  refund has not arrived.
 - Receive in-app reminders for unpaid orders and payment-status notifications.
-  Admins receive in-app notifications when payment proof needs review.
+  Admins receive in-app notifications when payment proof or refund requests
+  need review.
 - Use the owner area to manage the menu, delivery areas, meal/date availability,
   and payment reviews.
 - Switch between dark and light themes; browse the About page.

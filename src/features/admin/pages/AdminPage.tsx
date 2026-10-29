@@ -9,17 +9,29 @@ import { StatusBadge } from "@/shared/feedback/status-badge";
 import { formatDeliveryDate } from "@/lib/delivery";
 import { useAuth } from "@/lib/auth";
 import { formatETB } from "@/lib/shop";
+import {
+  getAdminRefundRequests,
+  getRefundProofUrl,
+  removeRefundProof,
+  uploadRefundProof,
+} from "@/services/refundService";
 import { OwnerMenuForm } from "../components/OwnerMenuForm";
 import {
   useAdminCatalog,
   useAdminOrderingAvailability,
   useAdminOrders,
   useAdminPayments,
+  useAdminRefundRequests,
+  useCompletePaymentRefund,
   useReceiptUrl,
   useReviewPayment,
+  useReviewRefundRequest,
+  useResolveRefundFollowUp,
   useSetDeliveryDateOpen,
   useToggleAvailability,
 } from "../hooks/useAdminData";
+
+type RefundAdminRow = Awaited<ReturnType<typeof getAdminRefundRequests>>[number];
 
 export function AdminPage() {
   const { isAdmin, ready } = useAuth();
@@ -36,12 +48,16 @@ export function AdminPage() {
       <Tabs defaultValue="payments" className="mt-6">
         <TabsList className="h-auto flex-wrap justify-start gap-1">
           <TabsTrigger value="payments">Payments</TabsTrigger>
+          <TabsTrigger value="refunds">Refunds</TabsTrigger>
           <TabsTrigger value="orders">Orders</TabsTrigger>
           <TabsTrigger value="menu">Menu & areas</TabsTrigger>
           <TabsTrigger value="ordering">Order availability</TabsTrigger>
         </TabsList>
         <TabsContent value="payments">
           <PaymentsTab />
+        </TabsContent>
+        <TabsContent value="refunds">
+          <RefundsTab />
         </TabsContent>
         <TabsContent value="orders">
           <OrdersTab />
@@ -172,6 +188,246 @@ function PaymentRow({ p, onReceipt }: { p: PayRow; onReceipt: (path: string) => 
   );
 }
 
+function RefundsTab() {
+  const { data = [], isLoading, isError, error } = useAdminRefundRequests();
+
+  if (isLoading) return <p className="mt-6 text-muted-foreground">Loading refund requests…</p>;
+  if (isError)
+    return (
+      <p className="mt-6 text-destructive">
+        Could not load refund requests: {error instanceof Error ? error.message : String(error)}
+      </p>
+    );
+  if (data.length === 0)
+    return <p className="mt-6 text-muted-foreground">No refund requests need attention.</p>;
+
+  return (
+    <ul className="mt-6 space-y-3">
+      {data.map((request) => (
+        <RefundRequestRow key={request.id} request={request} />
+      ))}
+    </ul>
+  );
+}
+
+function RefundRequestRow({ request }: { request: RefundAdminRow }) {
+  const [note, setNote] = useState("");
+  const [reference, setReference] = useState("");
+  const [proof, setProof] = useState<File | null>(null);
+  const [transferred, setTransferred] = useState(false);
+  const [followUpNote, setFollowUpNote] = useState("");
+  const [proofBusy, setProofBusy] = useState(false);
+  const review = useReviewRefundRequest();
+  const complete = useCompletePaymentRefund();
+  const resolveFollowUp = useResolveRefundFollowUp();
+
+  async function reviewRequest(approve: boolean) {
+    if (!approve && !note.trim()) {
+      toast.error("Add a reason before rejecting this refund request");
+      return;
+    }
+    try {
+      await review.mutateAsync({ requestId: request.id, approve, note: note.trim() });
+      toast.success(
+        approve
+          ? "Refund approved; send it manually to the requested account"
+          : "Refund request rejected",
+      );
+      setNote("");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not review refund request");
+    }
+  }
+
+  async function markAsRefunded(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!proof) {
+      toast.error("Upload the refund transaction screenshot or PDF");
+      return;
+    }
+    if (!transferred) {
+      toast.error("Confirm that you have sent the refund before marking it complete");
+      return;
+    }
+    let path: string | null = null;
+    try {
+      path = await uploadRefundProof(request.id, proof);
+      await complete.mutateAsync({
+        requestId: request.id,
+        reference: reference.trim(),
+        proofPath: path,
+      });
+      toast.success("Refund transfer recorded and customer notified");
+      setReference("");
+      setProof(null);
+      setTransferred(false);
+    } catch (error) {
+      if (path) {
+        try {
+          await removeRefundProof(path);
+        } catch (cleanupError) {
+          console.error("Could not remove refund proof after failed refund update", cleanupError);
+        }
+      }
+      toast.error(error instanceof Error ? error.message : "Could not record refund transfer");
+    }
+  }
+
+  async function openProof(path: string) {
+    setProofBusy(true);
+    try {
+      const url = await getRefundProofUrl(path);
+      window.open(url, "_blank", "noopener");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not open refund proof");
+    } finally {
+      setProofBusy(false);
+    }
+  }
+
+  async function completeFollowUp(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    try {
+      await resolveFollowUp.mutateAsync({ requestId: request.id, note: followUpNote.trim() });
+      toast.success("Refund follow-up marked reviewed; customer notified");
+      setFollowUpNote("");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not resolve refund follow-up");
+    }
+  }
+
+  return (
+    <li className="space-y-4 rounded-xl border border-border bg-card p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="font-display text-xl uppercase">{request.orders?.order_number}</p>
+          <p className="text-xs text-muted-foreground">
+            {request.orders?.contact_name} · {request.orders?.contact_phone} ·{" "}
+            {request.orders?.delivery_area_name}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Requested {format(new Date(request.created_at), "d MMM yyyy, HH:mm")} ·{" "}
+            {request.method.toUpperCase()} · Account {request.account_number}
+          </p>
+          {request.payments?.transaction_ref && (
+            <p className="text-xs text-muted-foreground">
+              Original payment ref:{" "}
+              <span className="font-mono">{request.payments.transaction_ref}</span>
+            </p>
+          )}
+        </div>
+        <div className="text-right">
+          <StatusBadge status={request.status} label={`refund ${request.status}`} />
+          <p className="mt-1 font-semibold text-primary">{formatETB(request.amount)}</p>
+        </div>
+      </div>
+      {request.reason && (
+        <p className="text-sm">
+          <span className="text-muted-foreground">Customer reason:</span> {request.reason}
+        </p>
+      )}
+
+      {request.status === "pending" && (
+        <div className="flex flex-wrap gap-2 border-t border-border pt-3">
+          <Input
+            className="max-w-md"
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            maxLength={500}
+            placeholder="Rejection reason (required to reject); optional approval note"
+            aria-label="Refund review note"
+          />
+          <Button disabled={review.isPending} onClick={() => void reviewRequest(true)}>
+            Approve refund
+          </Button>
+          <Button
+            variant="destructive"
+            disabled={review.isPending}
+            onClick={() => void reviewRequest(false)}
+          >
+            Reject
+          </Button>
+        </div>
+      )}
+
+      {request.status === "approved" && (
+        <form onSubmit={markAsRefunded} className="space-y-3 border-t border-border pt-3">
+          <p className="text-sm font-semibold">
+            After sending the transfer manually, record it here:
+          </p>
+          <Input
+            value={reference}
+            onChange={(event) => setReference(event.target.value)}
+            required
+            minLength={4}
+            maxLength={100}
+            placeholder="Refund transaction reference"
+          />
+          <Input
+            type="file"
+            accept="image/jpeg,image/png,image/webp,application/pdf"
+            required
+            onChange={(event) => setProof(event.target.files?.[0] ?? null)}
+            aria-label="Refund transfer proof"
+          />
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={transferred}
+              onChange={(event) => setTransferred(event.target.checked)}
+              className="mt-1"
+            />
+            I have completed the bank transfer to the customer’s account.
+          </label>
+          <Button type="submit" disabled={complete.isPending}>
+            {complete.isPending ? "Saving…" : "Mark refunded and notify customer"}
+          </Button>
+        </form>
+      )}
+
+      {request.status === "refunded" && (
+        <div className="space-y-2 border-t border-border pt-3 text-sm">
+          <p>
+            Refund ref: <span className="font-mono">{request.refund_reference}</span>
+          </p>
+          {request.proof_path && (
+            <Button
+              variant="link"
+              className="h-auto px-0"
+              disabled={proofBusy}
+              onClick={() => void openProof(request.proof_path!)}
+            >
+              {proofBusy ? "Opening…" : "View refund proof"}
+            </Button>
+          )}
+          {request.follow_up_status === "pending" && (
+            <div className="rounded-md border border-warning/50 bg-warning/10 p-3">
+              <p className="font-semibold">Customer says refund has not arrived</p>
+              {request.follow_up_note && <p className="mt-1">{request.follow_up_note}</p>}
+              <p className="mt-1 text-xs text-muted-foreground">
+                Investigate the existing transfer. Do not send another refund unless you verify it
+                is necessary.
+              </p>
+              <form onSubmit={completeFollowUp} className="mt-3 flex flex-wrap gap-2">
+                <Input
+                  className="max-w-md"
+                  value={followUpNote}
+                  onChange={(event) => setFollowUpNote(event.target.value)}
+                  maxLength={500}
+                  placeholder="Update for the customer (optional)"
+                />
+                <Button type="submit" size="sm" disabled={resolveFollowUp.isPending}>
+                  Mark follow-up reviewed
+                </Button>
+              </form>
+            </div>
+          )}
+        </div>
+      )}
+    </li>
+  );
+}
+
 function OrdersTab() {
   const { data = [] } = useAdminOrders();
   return (
@@ -183,7 +439,7 @@ function OrdersTab() {
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="font-display text-lg uppercase">{o.order_number}</span>
               <span className="flex gap-1">
-                <StatusBadge status={o.status} />
+                <StatusBadge status={o.cancelled_at ? "cancelled" : o.status} />
                 {pay && <StatusBadge status={pay.status} label={`payment ${pay.status}`} />}
               </span>
             </div>

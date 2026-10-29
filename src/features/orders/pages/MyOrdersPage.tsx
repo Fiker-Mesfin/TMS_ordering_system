@@ -45,19 +45,21 @@ export function MyOrdersPage() {
                     <p
                       className={`mt-1 text-xs font-medium ${pay?.status === "rejected" ? "text-destructive" : pay?.status === "verified" ? "text-success" : "text-primary"}`}
                     >
-                      {pay?.status === "verified"
-                        ? "Confirmed — delivery scheduled"
-                        : pay?.status === "rejected"
-                          ? "Payment needs attention — open to resubmit"
-                          : pay?.submitted_at
-                            ? "Payment submitted — waiting for verification"
-                            : "Payment required — open to complete your order"}
+                      {o.cancelled_at
+                        ? "Order closed — place a new order from the menu"
+                        : pay?.status === "verified"
+                          ? "Confirmed — delivery scheduled"
+                          : pay?.status === "rejected"
+                            ? "Payment needs attention — open to resubmit"
+                            : pay?.submitted_at
+                              ? "Payment submitted — waiting for verification"
+                              : "Payment required — open to complete your order"}
                     </p>
                   </div>
                   <div className="text-right">
                     <p className="font-semibold">{formatETB(o.total)}</p>
                     <div className="mt-1 flex justify-end gap-1">
-                      <StatusBadge status={o.status} />
+                      <StatusBadge status={o.cancelled_at ? "cancelled" : o.status} />
                       {pay && <StatusBadge status={pay.status} label={`payment ${pay.status}`} />}
                     </div>
                   </div>

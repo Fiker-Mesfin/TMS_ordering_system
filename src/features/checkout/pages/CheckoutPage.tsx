@@ -127,7 +127,7 @@ export function CheckoutPage() {
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="contactPhone">
-              Phone <RequiredMark />
+              Phone (for delivery) <RequiredMark />
             </Label>
             <Input
               id="contactPhone"

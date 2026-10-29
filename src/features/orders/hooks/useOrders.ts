@@ -18,7 +18,12 @@ export function useMyOrders(userId?: string) {
 }
 
 export function useOrderDetails(orderId: string) {
-  return useQuery({ queryKey: ["order", orderId], queryFn: () => getOrderDetails(orderId) });
+  return useQuery({
+    queryKey: ["order", orderId],
+    queryFn: () => getOrderDetails(orderId),
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
+  });
 }
 
 export function useSubmitPaymentProof(orderId: string) {

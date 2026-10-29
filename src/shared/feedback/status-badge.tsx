@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 const STYLES: Record<string, string> = {
   pending: "bg-warning text-warning-foreground",
   confirmed: "bg-success text-success-foreground",
+  cancelled: "bg-muted text-muted-foreground",
   unverified: "bg-muted text-muted-foreground",
   verified: "bg-success text-success-foreground",
   rejected: "bg-destructive text-destructive-foreground",

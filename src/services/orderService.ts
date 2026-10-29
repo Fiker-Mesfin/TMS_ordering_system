@@ -4,7 +4,7 @@ export async function getMyOrders(userId: string) {
   const { data, error } = await supabase
     .from("orders")
     .select(
-      "id, order_number, status, total, created_at, delivery_date, meal_slot, delivery_area_name, payments(status,submitted_at)",
+      "id, order_number, status, cancelled_at, total, created_at, delivery_date, meal_slot, delivery_area_name, payments(status,submitted_at)",
     )
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
@@ -15,7 +15,7 @@ export async function getMyOrders(userId: string) {
 export async function getOrderDetails(orderId: string) {
   const { data, error } = await supabase
     .from("orders")
-    .select("*, order_items(*), payments(*)")
+    .select("*, order_items(*), payments(*), refund_requests(*)")
     .eq("id", orderId)
     .maybeSingle();
   if (error) throw error;

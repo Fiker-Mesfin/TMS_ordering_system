@@ -16,6 +16,7 @@ import {
   useSubmitPaymentProof,
   useUploadPaymentReceipt,
 } from "../hooks/useOrders";
+import { RefundSection } from "../components/RefundSection";
 
 type Extra = { name: string; price: number };
 
@@ -29,7 +30,38 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
   const paymentSubmitted = Boolean(pay?.submitted_at);
   const paymentVerified = pay?.status === "verified";
   const paymentRejected = pay?.status === "rejected";
+  const latestRefund = [...order.refund_requests].sort((a, b) =>
+    b.created_at.localeCompare(a.created_at),
+  )[0];
+  const refundBlocksPayment = order.refund_requests.some(
+    (request) =>
+      request.status === "pending" ||
+      request.status === "approved" ||
+      (request.status === "refunded" && request.customer_decision !== "continue"),
+  );
   const deliveryScheduleMessage = `Your burgers are scheduled for delivery on ${formatDeliveryDate(order.delivery_date)} during ${order.meal_slot}.`;
+  const progressSteps = order.cancelled_at
+    ? [
+        { label: "Order placed", complete: true },
+        { label: "Refund received", complete: true },
+        { label: "Order closed", complete: true },
+      ]
+    : [
+        { label: "Order placed", complete: true },
+        {
+          label: paymentSubmitted ? "Payment submitted" : "Payment needed",
+          complete: paymentSubmitted,
+        },
+        {
+          label: paymentVerified
+            ? "Payment verified"
+            : paymentRejected
+              ? "Payment rejected"
+              : "Verification",
+          complete: paymentVerified,
+        },
+        { label: "Delivery scheduled", complete: order.status === "confirmed" },
+      ];
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-4 py-12">
@@ -47,7 +79,7 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
           </p>
         </div>
         <div className="flex gap-2">
-          <StatusBadge status={order.status} />
+          <StatusBadge status={order.cancelled_at ? "cancelled" : order.status} />
           {pay && <StatusBadge status={pay.status} label={`payment ${pay.status}`} />}
         </div>
       </div>
@@ -59,32 +91,31 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
         <div>
           <h2 className="text-3xl">Order progress</h2>
           <p className="mt-1 text-sm text-muted-foreground" role="status">
-            {paymentVerified
-              ? deliveryScheduleMessage
-              : paymentRejected
-                ? "Your payment needs attention. Review the note below and resubmit your proof to continue."
-                : paymentSubmitted
-                  ? "Payment received — we’re checking it. We’ll confirm the order and delivery schedule once it’s verified."
-                  : "Your order is saved but not confirmed. Complete the bank transfer and submit its reference and proof below to reserve your delivery."}
+            {order.cancelled_at
+              ? "You confirmed receiving the refund and closed this order. Place a new order whenever you are ready."
+              : paymentVerified
+                ? deliveryScheduleMessage
+                : latestRefund?.status === "pending"
+                  ? "Your refund request is waiting for the owner to review it. Payment submission is paused while it is reviewed."
+                  : latestRefund?.status === "approved"
+                    ? "Your refund was approved. The owner will send it manually and add the transaction reference and proof here."
+                    : latestRefund?.status === "refunded"
+                      ? latestRefund.customer_decision === "continue"
+                        ? "You confirmed receiving the refund and chose to continue this order. Submit a new payment below."
+                        : latestRefund.customer_decision === "cancel"
+                          ? "You confirmed receiving the refund and closed this order. You can place a new order from the menu."
+                          : latestRefund.follow_up_status === "pending"
+                            ? "Your refund is marked sent, and your missing-transfer report is being investigated."
+                            : `Your refund is marked sent. Reference: ${latestRefund.refund_reference}. Review its proof below, then choose to close this order or continue with a new payment.`
+                      : paymentRejected
+                        ? "Your payment needs attention. Review the note below and resubmit your proof, or request a refund if you already transferred the money."
+                        : paymentSubmitted
+                          ? "Payment received — we’re checking it. We’ll confirm the order and delivery schedule once it’s verified."
+                          : "Your order is saved but not confirmed. Complete the bank transfer and submit its reference and proof below to reserve your delivery."}
           </p>
         </div>
         <ol className="grid gap-3 sm:grid-cols-4">
-          {[
-            { label: "Order placed", complete: true },
-            {
-              label: paymentSubmitted ? "Payment submitted" : "Payment needed",
-              complete: paymentSubmitted,
-            },
-            {
-              label: paymentVerified
-                ? "Payment verified"
-                : paymentRejected
-                  ? "Payment rejected"
-                  : "Verification",
-              complete: paymentVerified,
-            },
-            { label: "Delivery scheduled", complete: order.status === "confirmed" },
-          ].map((step, index) => (
+          {progressSteps.map((step, index) => (
             <li
               key={step.label}
               className={`rounded-lg border p-3 text-sm ${
@@ -144,14 +175,39 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
           </p>
         </section>
       ) : (
-        pay && (
-          <PaymentSection
-            orderId={order.id}
-            orderNumber={order.order_number}
-            total={Number(order.total)}
-            payment={pay}
-          />
-        )
+        <>
+          {order.cancelled_at && (
+            <section className="rounded-xl border border-border bg-card p-5">
+              <p className="font-display text-2xl uppercase">Order closed</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                This order was closed after you confirmed receiving the refund.
+              </p>
+              <Link
+                to="/"
+                className="mt-3 inline-block text-sm font-semibold text-primary underline"
+              >
+                Place a new order
+              </Link>
+            </section>
+          )}
+          {pay?.status === "rejected" && (
+            <RefundSection
+              orderId={order.id}
+              orderNumber={order.order_number}
+              amount={Number(pay.amount)}
+              requests={order.refund_requests}
+              paymentSubmittedAt={pay.submitted_at}
+            />
+          )}
+          {pay && !refundBlocksPayment && !order.cancelled_at && (
+            <PaymentSection
+              orderId={order.id}
+              orderNumber={order.order_number}
+              total={Number(order.total)}
+              payment={pay}
+            />
+          )}
+        </>
       )}
     </div>
   );

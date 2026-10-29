@@ -16,9 +16,19 @@ import {
 } from "@/services/adminService";
 import { getDeliverySchedule, getMealSlots } from "@/services/deliveryService";
 import { deliveryScheduleQueryKey, mealSlotsQueryKey } from "@/lib/delivery";
+import {
+  completePaymentRefund,
+  getAdminRefundRequests,
+  resolveRefundFollowUp,
+  reviewRefundRequest,
+} from "@/services/refundService";
 
 export function useAdminPayments() {
   return useQuery({ queryKey: ["admin-payments"], queryFn: getAdminPayments });
+}
+
+export function useAdminRefundRequests() {
+  return useQuery({ queryKey: ["admin-refund-requests"], queryFn: getAdminRefundRequests });
 }
 
 export function useAdminOrders() {
@@ -89,6 +99,45 @@ export function useReviewPayment() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["admin-payments"] });
       await queryClient.invalidateQueries({ queryKey: ["admin-orders"] });
+    },
+  });
+}
+
+export function useReviewRefundRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: reviewRefundRequest,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin-refund-requests"] }),
+        queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+      ]);
+    },
+  });
+}
+
+export function useCompletePaymentRefund() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: completePaymentRefund,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin-refund-requests"] }),
+        queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+      ]);
+    },
+  });
+}
+
+export function useResolveRefundFollowUp() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: resolveRefundFollowUp,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin-refund-requests"] }),
+        queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+      ]);
     },
   });
 }

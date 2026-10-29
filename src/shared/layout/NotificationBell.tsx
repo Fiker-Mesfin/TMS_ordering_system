@@ -61,7 +61,11 @@ export function NotificationBell() {
       }
     }
     setOpen(false);
-    if (notification.event_type === "payment_submitted") {
+    if (
+      notification.event_type === "payment_submitted" ||
+      notification.event_type === "refund_requested" ||
+      notification.event_type === "refund_follow_up"
+    ) {
       navigate({ to: "/admin" });
     } else if (notification.order_id) {
       navigate({ to: "/orders/$orderId", params: { orderId: notification.order_id } });
