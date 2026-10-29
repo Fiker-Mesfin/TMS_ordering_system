@@ -1,58 +1,118 @@
 # TMS Burger
 
-A React and TanStack Start ordering app for Addis Ababa campus delivery.
+A campus burger ordering web app for Addis Ababa University (AAU), built with
+React, TanStack Start/Router, Tailwind CSS, and Supabase.
 
-## Development
+## Requirements
 
-Install dependencies and run the local development server:
+- Node.js 22.12 or newer (or Node.js 20.19 or newer)
+- npm
+- A Supabase project for authentication and application data
 
-```sh
-npm install
+The versions of the application packages are recorded in `package-lock.json`.
+Use `npm ci` to install the exact locked dependency set. This installs the
+project's runtime and development dependencies; no separate global Vite,
+TypeScript, or test-runner installation is required.
+
+## Run locally
+
+```powershell
+npm ci
+Copy-Item .env.example .env
+```
+
+Edit `.env` and replace the sample values with your Supabase project URL and
+publishable key. For local Supabase credentials, find these in the Supabase
+Dashboard under **Project Settings → API**.
+
+The browser uses `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`.
+Server rendering uses `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`; set both
+sets to the same project and publishable key. Do not put a service-role key in
+any `VITE_` variable. `SUPABASE_SERVICE_ROLE_KEY` is optional and must remain
+server-only; it is only needed if trusted server code uses the admin client.
+
+Start the development server:
+
+```powershell
 npm run dev
 ```
 
-The app is served at `http://localhost:8080`.
+Open the URL Vite prints in the terminal (normally `http://localhost:8080`).
+If that port is in use, Vite may choose another port.
 
-Useful commands:
+## Supabase setup
 
-```sh
-npm test
-npm run lint
-npm run build
+Run the SQL files in `drizzle/migrations` in numerical order in the Supabase
+SQL Editor:
+
+1. `0000_migration.sql` — core schema, roles, menu, delivery areas, orders,
+   payments, and database functions.
+2. `0001_menu_photos.sql` — private burger-photo storage and admin upload
+   policies.
+3. `0002_preorder_schedule.sql` — today/tomorrow preorder dates, admin date
+   availability controls, breakfast/lunch/dinner availability, and database
+   order validation. The business timezone is `Africa/Addis_Ababa`.
+4. `0003_order_notifications.sql` — notification table and payment-review
+   notifications.
+5. `0004_notification_timing.sql` — admin alerts when payment proof is
+   submitted and one reminder for an unpaid order after one hour. This uses
+   Supabase's `pg_cron` extension to check every five minutes; enable that
+   extension if your project does not have it enabled.
+
+The first account created after applying the core migration is assigned the
+admin role by the database trigger. Sign in with that account to manage the
+menu, availability, orders, and payment reviews.
+
+### Google sign-in
+
+In Supabase, enable Google under **Authentication → Sign In / Providers** and
+configure the Google OAuth credentials. Add your local app URLs to Supabase's
+**Authentication → URL Configuration → Redirect URLs**, including both
+`http://localhost:8080/**` and `http://localhost:8081/**` if Vite may use either
+port. The Google Cloud authorized redirect URI should be the Supabase Auth
+callback URL shown in Supabase's Google-provider settings.
+
+## Web functionality
+
+- Browse the burger menu and extras; add configured items to a session-persistent
+  cart.
+- Create an account, sign in with email or Google, and view personal orders.
+- Place a preorder for today or tomorrow when the date and selected meal period
+  are open.
+- Choose an AAU delivery area and submit payment details and optional receipt
+  for bank transfer.
+- Follow order and payment progress, including verification, rejection notes,
+  and scheduled delivery date/meal period.
+- Receive in-app reminders for unpaid orders and payment-status notifications.
+  Admins receive in-app notifications when payment proof needs review.
+- Use the owner area to manage the menu, delivery areas, meal/date availability,
+  and payment reviews.
+- Switch between dark and light themes; browse the About page.
+
+Payment account information displayed to customers is configured in
+`src/lib/shop.ts`. Keep those details current before accepting real payments.
+
+Notifications are in-app only. They appear while users are signed in; this
+project does not currently send SMS or email.
+
+## Common commands
+
+```powershell
+npm run dev       # Start the local development server
+npm test          # Run tests
+npm run lint      # Run ESLint
+npm run build     # Create the production build
+npm run preview   # Preview a production build
 ```
 
 ## Project structure
 
-- `src/app/` contains the router, application setup, server entry, and file-based route definitions.
-- `src/features/` contains feature pages and domain-specific code.
-- `src/shared/` contains reusable UI, layout, and feedback components.
-- `src/services/` is for backend service functions.
-- `src/hooks/` is for reusable hooks.
-- `src/lib/` contains shared client utilities and state.
-- `src/integrations/supabase/` contains the current Supabase integration.
-- `src/styles/` contains global styles.
-
-TanStack Query manages backend query state. Supabase is currently configured with the existing project credentials; replace those settings with your own when your Supabase project is ready.
-
-To enable owner-added burger photos, apply `drizzle/migrations/0001_menu_photos.sql`
-to the configured Supabase project. It creates the private `menu-photos` bucket
-and limits uploads to administrators and supported image types.
-
-Apply `drizzle/migrations/0002_preorder_schedule.sql` after the previous
-migrations to enable same-day and next-day preorder dates, admin date closures,
-and breakfast/lunch/dinner availability controls. The database uses
-`Africa/Addis_Ababa` as the business timezone and validates delivery date and
-meal availability when creating each order.
-
-Apply `drizzle/migrations/0003_order_notifications.sql` after migration 0002,
-then apply `drizzle/migrations/0004_notification_timing.sql`. Enable the
-`pg_cron` extension in Supabase before applying migration 0004. It notifies
-admins only when a customer submits payment proof for verification and creates
-one in-app reminder if an order is still unpaid after one hour (the scheduled
-check runs every five minutes). Customers also get in-app notifications when
-payment is verified or rejected. Notifications are saved in Supabase and shown
-when signed-in users return to the site; this does not send email or SMS.
-
-Auth and cart client state remain in the existing React context providers in
-`src/lib/`. Google sign-in uses Supabase Auth, so the Google provider and local
-redirect URL must be enabled in the current Supabase project's Auth settings.
+- `src/app/` — app setup and file-based route definitions.
+- `src/features/` — feature pages and domain-specific UI.
+- `src/shared/` — reusable UI, layouts, and feedback components.
+- `src/services/` — Supabase and other backend service functions.
+- `src/hooks/` — reusable hooks.
+- `src/lib/` — shared client utilities and state.
+- `src/integrations/supabase/` — Supabase clients and generated database types.
+- `src/styles/` — global styles.
+- `drizzle/migrations/` — SQL migrations for the Supabase database.
