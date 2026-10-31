@@ -35,23 +35,25 @@ export function SiteHeader() {
         <Link to="/" className="font-display text-3xl uppercase tracking-wide text-primary">
           TMS<span className="text-foreground">.</span>
         </Link>
-        <nav aria-label="Main navigation" className="hidden items-center gap-1 sm:flex sm:gap-2">
-          <Button asChild variant="ghost" size="sm">
-            <Link to="/">Menu</Link>
-          </Button>
-          <Button asChild variant="ghost" size="sm">
-            <Link to="/about">About</Link>
-          </Button>
-          {user && (
+        <div className="flex items-center gap-0.5 sm:gap-1">
+          <nav aria-label="Main navigation" className="hidden items-center gap-1 sm:flex sm:gap-2">
             <Button asChild variant="ghost" size="sm">
-              <Link to="/orders">My Orders</Link>
+              <Link to="/">Menu</Link>
             </Button>
-          )}
-          {isAdmin && (
             <Button asChild variant="ghost" size="sm">
-              <Link to="/admin">Owner</Link>
+              <Link to="/about">About</Link>
             </Button>
-          )}
+            {user && (
+              <Button asChild variant="ghost" size="sm">
+                <Link to="/orders">My Orders</Link>
+              </Button>
+            )}
+            {isAdmin && (
+              <Button asChild variant="ghost" size="sm">
+                <Link to="/admin">Owner</Link>
+              </Button>
+            )}
+          </nav>
           {user && <NotificationBell key={user.id} />}
           <Button
             variant="ghost"
@@ -67,50 +69,34 @@ export function SiteHeader() {
               <LogOut />
             </Button>
           ) : (
-            <Button asChild variant="ghost" size="sm">
+            <Button asChild variant="ghost" size="sm" className="px-2 sm:px-3">
               <Link to="/auth" search={{ redirect: undefined }}>
                 Sign in
               </Link>
             </Button>
           )}
-          <Button asChild size="sm" className="relative">
-            <Link to="/cart" aria-label="Cart">
+          <Button asChild size="icon" className="relative sm:h-8 sm:w-auto sm:px-3">
+            <Link to="/cart" aria-label={`Cart, ${count} ${count === 1 ? "item" : "items"}`}>
               <ShoppingBag />
-              <span>{count}</span>
-            </Link>
-          </Button>
-        </nav>
-        <div className="flex items-center gap-0.5 sm:hidden">
-          {user && <NotificationBell key={user.id} />}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggle}
-            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-          >
-            {theme === "dark" ? <Sun /> : <Moon />}
-          </Button>
-          {user ? (
-            <Button variant="ghost" size="icon" onClick={signOut} aria-label="Sign out">
-              <LogOut />
-            </Button>
-          ) : (
-            <Button asChild variant="ghost" size="sm">
-              <Link to="/auth" search={{ redirect: undefined }}>
-                Sign in
-              </Link>
-            </Button>
-          )}
-          <Button asChild size="icon" className="relative">
-            <Link to="/cart" aria-label={`Cart, ${count} items`}>
-              <ShoppingBag />
-              <span className="sr-only">{count}</span>
+              <span className="sr-only sm:not-sr-only sm:ml-1">{count}</span>
+              {count > 0 && (
+                <span
+                  aria-hidden="true"
+                  className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-bold leading-none text-primary-foreground sm:hidden"
+                >
+                  {count > 99 ? "99+" : count}
+                </span>
+              )}
             </Link>
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label="Open navigation menu">
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Open navigation menu"
+                className="sm:hidden"
+              >
                 <MenuIcon />
               </Button>
             </DropdownMenuTrigger>
