@@ -27,34 +27,34 @@ export function MenuPage() {
           className="absolute inset-0 h-full w-full object-cover"
         />
         <div className="absolute inset-0 bg-hero-fade" />
-        <div className="relative mx-auto max-w-6xl px-4 py-24 sm:py-32">
-          <p className="inline-flex rounded-full border border-primary/30 bg-background/90 px-4 py-2 text-sm font-bold uppercase tracking-[0.2em] text-primary shadow-md backdrop-blur-sm">
+        <div className="relative mx-auto max-w-6xl px-4 py-16 sm:py-32">
+          <p className="inline-flex rounded-full border border-primary/30 bg-background/95 px-3 py-2 text-xs font-bold uppercase tracking-[0.12em] text-primary shadow-md backdrop-blur-sm sm:px-4 sm:text-sm sm:tracking-[0.2em] md:text-base">
             Free delivery · AAU campuses
           </p>
-          <h1 className="mt-3 max-w-xl text-6xl leading-none sm:text-8xl">
+          <h1 className="mt-4 max-w-2xl text-5xl leading-[0.95] sm:mt-3 sm:text-8xl">
             Smashed. <span className="text-primary">Stacked.</span> Delivered.
           </h1>
-          <p className="mt-5 max-w-md text-muted-foreground">
+          <p className="mt-5 max-w-md text-base leading-relaxed text-foreground/90">
             Pick your burger, load it with extras, and pay by CBE or Telebirr transfer.
           </p>
-          <Button asChild size="lg" className="mt-8 bg-flame shadow-flame">
+          <Button asChild size="lg" className="mt-7 bg-flame shadow-flame sm:mt-8">
             <a href="#menu">See the menu</a>
           </Button>
         </div>
       </section>
 
-      <section id="menu" className="mx-auto max-w-6xl px-4 py-16">
-        <h2 className="text-5xl">The Menu</h2>
+      <section id="menu" className="mx-auto max-w-6xl px-4 py-12 sm:py-16">
+        <h2 className="text-4xl sm:text-5xl">The Menu</h2>
         {isLoading ? (
-          <p className="mt-8 text-muted-foreground">Loading…</p>
+          <p className="mt-8 text-base text-muted-foreground">Loading…</p>
         ) : (
-          <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-6 grid gap-4 sm:mt-8 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
             {items.map((item) => (
               <article
                 key={item.id}
-                className="group overflow-hidden rounded-xl border border-border bg-card"
+                className="group overflow-hidden rounded-xl border border-border bg-card shadow-sm"
               >
-                <div className="aspect-square overflow-hidden">
+                <div className="aspect-[4/3] overflow-hidden sm:aspect-square">
                   <MenuPhoto
                     imageKey={item.image_key}
                     alt={item.name}
@@ -64,14 +64,18 @@ export function MenuPage() {
                     className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                   />
                 </div>
-                <div className="p-5">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <h3 className="text-2xl">{item.name}</h3>
-                    <span className="font-semibold text-primary">{formatETB(item.price)}</span>
+                <div className="p-4 sm:p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <h3 className="min-w-0 text-xl leading-tight sm:text-2xl">{item.name}</h3>
+                    <span className="shrink-0 whitespace-nowrap pt-0.5 font-semibold text-primary">
+                      {formatETB(item.price)}
+                    </span>
                   </div>
-                  <p className="mt-2 text-sm text-muted-foreground">{item.description}</p>
+                  <p className="mt-2 text-base leading-relaxed text-card-foreground/80">
+                    {item.description}
+                  </p>
                   <Button
-                    className="mt-4 w-full"
+                    className="mt-4 min-h-11 w-full text-sm"
                     disabled={!item.available}
                     onClick={() => setSelected(item)}
                   >
@@ -112,7 +116,7 @@ function AddDialog({
         </DialogHeader>
         <div className="space-y-5">
           <div>
-            <p className="mb-2 text-sm font-semibold">Extras (optional)</p>
+            <p className="mb-2 text-base font-semibold">Extras (optional)</p>
             <div className="space-y-2">
               {extras.map((e) => (
                 <label
@@ -128,13 +132,13 @@ function AddDialog({
                     />
                     {e.name}
                   </span>
-                  <span className="text-sm text-muted-foreground">+{formatETB(e.price)}</span>
+                  <span className="text-base text-muted-foreground">+{formatETB(e.price)}</span>
                 </label>
               ))}
             </div>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold">Quantity</span>
+            <span className="text-base font-semibold">Quantity</span>
             <div className="flex items-center gap-3">
               <Button
                 size="icon"

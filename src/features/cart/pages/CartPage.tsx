@@ -37,7 +37,7 @@ export function CartPage() {
                     <p className="font-semibold">{formatETB(lineUnit(l) * l.quantity)}</p>
                   </div>
                   {l.extras.length > 0 && (
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-sm text-muted-foreground sm:text-base">
                       + {l.extras.map((e) => e.name).join(", ")}
                     </p>
                   )}
@@ -78,7 +78,7 @@ export function CartPage() {
           <div className="mt-6 space-y-2 rounded-xl border border-border bg-card p-5">
             <Row label="Subtotal (estimate)" value={formatETB(estimate)} />
             <Row label="Delivery" value="FREE · ETB 0" />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground sm:text-base">
               Final total is confirmed by our system at checkout.
             </p>
             <Button asChild size="lg" className="mt-3 w-full bg-flame shadow-flame">
@@ -93,7 +93,7 @@ export function CartPage() {
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between text-sm">
+    <div className="flex justify-between text-base">
       <span className="text-muted-foreground">{label}</span>
       <span className="font-semibold">{value}</span>
     </div>

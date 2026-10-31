@@ -156,13 +156,13 @@ export function CheckoutPage() {
           </Select>
         </div>
         <fieldset className="space-y-2">
-          <legend className="text-sm font-medium leading-none">
+          <legend className="text-base font-medium leading-snug">
             Delivery date <RequiredMark />
           </legend>
           {datesLoading ? (
-            <p className="text-sm text-muted-foreground">Checking available delivery dates…</p>
+            <p className="text-base text-muted-foreground">Checking available delivery dates…</p>
           ) : deliveryScheduleError ? (
-            <p role="alert" className="text-sm text-destructive">
+            <p role="alert" className="text-base text-destructive">
               Could not load delivery dates: {deliveryScheduleError.message}
             </p>
           ) : openDeliveryDays.length > 0 ? (
@@ -188,19 +188,19 @@ export function CheckoutPage() {
               ))}
             </RadioGroup>
           ) : (
-            <p className="rounded-md border border-destructive/50 p-3 text-sm text-destructive">
+            <p className="rounded-md border border-destructive/50 p-3 text-base text-destructive">
               Ordering is currently closed for today and tomorrow.
             </p>
           )}
         </fieldset>
         <fieldset className="space-y-2">
-          <legend className="text-sm font-medium leading-none">
+          <legend className="text-base font-medium leading-snug">
             Meal time <RequiredMark />
           </legend>
           {mealsLoading ? (
-            <p className="text-sm text-muted-foreground">Loading available meal times…</p>
+            <p className="text-base text-muted-foreground">Loading available meal times…</p>
           ) : mealSlotsError ? (
-            <p role="alert" className="text-sm text-destructive">
+            <p role="alert" className="text-base text-destructive">
               Could not load meal times: {mealSlotsError.message}
             </p>
           ) : mealSlots.length > 0 ? (
@@ -223,13 +223,13 @@ export function CheckoutPage() {
               ))}
             </RadioGroup>
           ) : (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-base text-muted-foreground">
               No meal times are currently accepting orders.
             </p>
           )}
         </fieldset>
         <fieldset className="space-y-2">
-          <legend className="text-sm font-medium leading-none">
+          <legend className="text-base font-medium leading-snug">
             Delivery location <RequiredMark />
           </legend>
           <RadioGroup
@@ -282,13 +282,13 @@ export function CheckoutPage() {
 
       <aside className="h-fit rounded-xl border border-border bg-card p-5">
         <h2 className="text-2xl">Summary</h2>
-        <ul className="mt-4 space-y-2 text-sm">
+        <ul className="mt-4 space-y-2 text-base">
           {lines.map((l) => (
             <li key={l.key} className="flex justify-between gap-2">
               <span>
                 {l.quantity} × {l.name}
                 {l.extras.length > 0 && (
-                  <span className="block text-xs text-muted-foreground">
+                  <span className="block text-sm text-muted-foreground sm:text-base">
                     + {l.extras.map((e) => e.name).join(", ")}
                   </span>
                 )}
@@ -297,7 +297,7 @@ export function CheckoutPage() {
             </li>
           ))}
         </ul>
-        <div className="mt-4 space-y-1 border-t border-border pt-4 text-sm">
+        <div className="mt-4 space-y-1 border-t border-border pt-4 text-base">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Delivery</span>
             <span>ETB 0</span>
@@ -306,7 +306,7 @@ export function CheckoutPage() {
             <span>Estimated total</span>
             <span>{formatETB(estimate)}</span>
           </div>
-          <p className="pt-1 text-xs text-muted-foreground">
+          <p className="pt-1 text-sm text-muted-foreground sm:text-base">
             The final total is calculated by our system when you place the order.
           </p>
         </div>

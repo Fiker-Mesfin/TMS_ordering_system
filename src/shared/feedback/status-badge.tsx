@@ -9,12 +9,21 @@ const STYLES: Record<string, string> = {
   rejected: "bg-destructive text-destructive-foreground",
 };
 
-export function StatusBadge({ status, label }: { status: string; label?: string }) {
+export function StatusBadge({
+  status,
+  label,
+  className,
+}: {
+  status: string;
+  label?: string;
+  className?: string;
+}) {
   return (
     <span
       className={cn(
         "inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide",
         STYLES[status],
+        className,
       )}
     >
       {label ?? status}

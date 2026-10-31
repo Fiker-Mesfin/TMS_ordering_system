@@ -97,11 +97,11 @@ export function NotificationBell() {
         <section
           id="notification-panel"
           aria-label="Notifications"
-          className="absolute right-0 top-full z-50 mt-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-xl"
+          className="fixed left-3 right-3 top-14 z-50 overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-xl sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[min(22rem,calc(100vw-2rem))]"
         >
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <h2 className="font-display text-xl uppercase">Notifications</h2>
-            <span className="text-xs text-muted-foreground">{unreadCount} unread</span>
+            <span className="text-sm text-muted-foreground">{unreadCount} unread</span>
           </div>
           {isLoading ? (
             <p className="p-4 text-sm text-muted-foreground">Loading notifications…</p>
@@ -125,11 +125,13 @@ export function NotificationBell() {
                       className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${notification.read_at ? "bg-muted-foreground/30" : "bg-primary"}`}
                     />
                     <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-semibold">{notification.title}</span>
-                      <span className="mt-1 block text-xs text-muted-foreground">
+                      <span className="block text-base font-semibold leading-snug">
+                        {notification.title}
+                      </span>
+                      <span className="mt-1 block text-sm leading-relaxed text-muted-foreground">
                         {notification.body}
                       </span>
-                      <span className="mt-2 block text-[11px] text-muted-foreground">
+                      <span className="mt-2 block text-sm text-muted-foreground">
                         {formatDistanceToNow(new Date(notification.created_at), {
                           addSuffix: true,
                         })}

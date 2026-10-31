@@ -17,7 +17,7 @@ export function AboutPage() {
             <p className="mt-5 max-w-xl text-base text-foreground sm:text-lg">
               Quality at an affordable price, flavor on every campus.
             </p>
-            <p className="mt-3 max-w-xl text-sm text-muted-foreground">
+            <p className="mt-3 max-w-xl text-base leading-relaxed text-muted-foreground">
               TMS Burger brings delicious burgers and convenient delivery to AAU campuses in Addis
               Ababa—with free campus delivery.
             </p>
@@ -38,14 +38,14 @@ export function AboutPage() {
         <div className="grid gap-8 md:grid-cols-2">
           <div>
             <h2 className="text-4xl sm:text-5xl">Good burgers, right on campus</h2>
-            <p className="mt-4 max-w-2xl text-sm text-muted-foreground">
+            <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground">
               Choose your burger, add your favorite extras, and select a delivery date and meal
               time. Place your order online and follow its progress from your order page.
             </p>
           </div>
           <aside className="rounded-xl border border-border bg-card p-5">
             <h2 className="text-2xl">How ordering works</h2>
-            <ol className="mt-3 list-inside list-decimal space-y-2 text-xs leading-relaxed text-muted-foreground sm:text-sm">
+            <ol className="mt-3 list-inside list-decimal space-y-2 text-base leading-relaxed text-muted-foreground">
               <li>Choose your burgers and select a delivery date and meal time.</li>
               <li>
                 Place your order, then transfer the total using one of the listed payment methods.
@@ -56,7 +56,7 @@ export function AboutPage() {
                 selected delivery time.
               </li>
             </ol>
-            <p className="mt-3 text-xs text-muted-foreground">
+            <p className="mt-3 text-base leading-relaxed text-muted-foreground">
               Your order is not confirmed until the payment has been verified.
             </p>
           </aside>

@@ -32,18 +32,18 @@ export function MyOrdersPage() {
                 <Link
                   to="/orders/$orderId"
                   params={{ orderId: o.id }}
-                  className="flex items-center justify-between gap-4 rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary"
+                  className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary sm:flex-row sm:items-center sm:justify-between sm:gap-4"
                 >
-                  <div>
+                  <div className="min-w-0">
                     <p className="font-display text-xl uppercase">{o.order_number}</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-sm text-muted-foreground sm:text-base">
                       {format(new Date(o.created_at), "d MMM yyyy, HH:mm")} · {o.delivery_area_name}
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-sm text-muted-foreground sm:text-base">
                       Delivery: {formatDeliveryDate(o.delivery_date)} · {o.meal_slot}
                     </p>
                     <p
-                      className={`mt-1 text-xs font-medium ${pay?.status === "rejected" ? "text-destructive" : pay?.status === "verified" ? "text-success" : "text-primary"}`}
+                      className={`mt-1 text-sm font-medium leading-snug sm:text-base ${pay?.status === "rejected" ? "text-destructive" : pay?.status === "verified" ? "text-success" : "text-primary"}`}
                     >
                       {o.cancelled_at
                         ? "Order closed — place a new order from the menu"
@@ -56,11 +56,20 @@ export function MyOrdersPage() {
                               : "Payment required — open to complete your order"}
                     </p>
                   </div>
-                  <div className="text-right">
+                  <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:flex-col sm:items-end sm:text-right">
                     <p className="font-semibold">{formatETB(o.total)}</p>
-                    <div className="mt-1 flex justify-end gap-1">
-                      <StatusBadge status={o.cancelled_at ? "cancelled" : o.status} />
-                      {pay && <StatusBadge status={pay.status} label={`payment ${pay.status}`} />}
+                    <div className="flex flex-col items-end gap-1 sm:mt-1 sm:flex-row sm:flex-wrap sm:justify-end">
+                      <StatusBadge
+                        status={o.cancelled_at ? "cancelled" : o.status}
+                        className="text-sm sm:text-base"
+                      />
+                      {pay && (
+                        <StatusBadge
+                          status={pay.status}
+                          label={`payment ${pay.status}`}
+                          className="text-sm sm:text-base"
+                        />
+                      )}
                     </div>
                   </div>
                 </Link>

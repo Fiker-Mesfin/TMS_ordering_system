@@ -65,22 +65,31 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-4 py-12">
-      <Link to="/orders" className="text-sm text-muted-foreground hover:text-foreground">
+      <Link to="/orders" className="text-base text-muted-foreground hover:text-foreground">
         ← My Orders
       </Link>
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-5xl">{order.order_number}</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-4xl sm:text-5xl">{order.order_number}</h1>
+          <p className="text-base text-muted-foreground">
             {format(new Date(order.created_at), "d MMM yyyy, HH:mm")}
           </p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-base text-muted-foreground">
             Delivery: {formatDeliveryDate(order.delivery_date)} · {order.meal_slot}
           </p>
         </div>
-        <div className="flex gap-2">
-          <StatusBadge status={order.cancelled_at ? "cancelled" : order.status} />
-          {pay && <StatusBadge status={pay.status} label={`payment ${pay.status}`} />}
+        <div className="flex flex-col items-start gap-1 lg:flex-row lg:items-center lg:gap-2">
+          <StatusBadge
+            status={order.cancelled_at ? "cancelled" : order.status}
+            className="text-sm sm:text-base"
+          />
+          {pay && (
+            <StatusBadge
+              status={pay.status}
+              label={`payment ${pay.status}`}
+              className="text-sm sm:text-base"
+            />
+          )}
         </div>
       </div>
 
@@ -90,7 +99,7 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
       >
         <div>
           <h2 className="text-3xl">Order progress</h2>
-          <p className="mt-1 text-sm text-muted-foreground" role="status">
+          <p className="mt-1 text-base leading-relaxed text-muted-foreground" role="status">
             {order.cancelled_at
               ? "You confirmed receiving the refund and closed this order. Place a new order whenever you are ready."
               : paymentVerified
@@ -118,7 +127,7 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
           {progressSteps.map((step, index) => (
             <li
               key={step.label}
-              className={`rounded-lg border p-3 text-sm ${
+              className={`rounded-lg border p-3 text-base leading-snug ${
                 step.complete
                   ? "border-success/50 bg-success/10 text-success"
                   : paymentRejected && index === 2
@@ -126,7 +135,7 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
                     : "border-border text-muted-foreground"
               }`}
             >
-              <span className="block text-xs font-semibold uppercase tracking-wide">
+              <span className="block text-sm font-semibold uppercase tracking-wide">
                 Step {index + 1}
               </span>
               <span className="mt-1 block font-medium">{step.label}</span>
@@ -136,13 +145,13 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
       </section>
 
       <section className="rounded-xl border border-border bg-card p-5">
-        <ul className="space-y-2 text-sm">
+        <ul className="space-y-2 text-base">
           {order.order_items.map((it) => (
             <li key={it.id} className="flex justify-between gap-2">
               <span>
                 {it.quantity} × {it.name}
                 {(it.extras as Extra[]).length > 0 && (
-                  <span className="block text-xs text-muted-foreground">
+                  <span className="block text-sm text-muted-foreground sm:text-base">
                     + {(it.extras as Extra[]).map((e) => e.name).join(", ")}
                   </span>
                 )}
@@ -151,7 +160,7 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
             </li>
           ))}
         </ul>
-        <div className="mt-4 space-y-1 border-t border-border pt-4 text-sm">
+        <div className="mt-4 space-y-1 border-t border-border pt-4 text-base">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Delivery</span>
             <span>FREE · ETB 0</span>
@@ -161,7 +170,7 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
             <span className="text-primary">{formatETB(order.total)}</span>
           </div>
         </div>
-        <p className="mt-4 text-xs text-muted-foreground">
+        <p className="mt-4 text-sm leading-relaxed text-muted-foreground sm:text-base">
           Deliver to {order.delivery_area_name} — {order.address} · {order.contact_name},{" "}
           {order.contact_phone}
         </p>
@@ -170,7 +179,7 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
       {order.status === "confirmed" ? (
         <section className="rounded-xl border border-success bg-card p-5">
           <p className="font-display text-2xl uppercase text-success">Order confirmed</p>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-base leading-relaxed text-muted-foreground">
             Payment verified. {deliveryScheduleMessage}
           </p>
         </section>
@@ -179,12 +188,12 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
           {order.cancelled_at && (
             <section className="rounded-xl border border-border bg-card p-5">
               <p className="font-display text-2xl uppercase">Order closed</p>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className="mt-1 text-base leading-relaxed text-muted-foreground">
                 This order was closed after you confirmed receiving the refund.
               </p>
               <Link
                 to="/"
-                className="mt-3 inline-block text-sm font-semibold text-primary underline"
+                className="mt-3 inline-block text-base font-semibold text-primary underline"
               >
                 Place a new order
               </Link>
@@ -300,7 +309,7 @@ function PaymentSection({
           <div key={a.id} className="rounded-lg border border-border bg-muted p-4">
             <p className="text-sm font-semibold">{a.label}</p>
             <p className="mt-1 font-mono text-lg">{a.accountNumber}</p>
-            <p className="text-xs text-muted-foreground">{a.accountName}</p>
+            <p className="text-sm text-muted-foreground">{a.accountName}</p>
           </div>
         ))}
       </div>

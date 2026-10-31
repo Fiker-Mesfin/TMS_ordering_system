@@ -89,14 +89,14 @@ export function AuthPage({
   return (
     <div className="mx-auto max-w-md px-4 py-16">
       <h1 className="text-5xl">Sign in</h1>
-      <p className="mt-2 text-sm text-muted-foreground">
+      <p className="mt-2 text-base leading-relaxed text-muted-foreground">
         You need an account to check out and track your orders.
       </p>
 
       {sent ? (
         <div className="mt-8 rounded-xl border border-border bg-card p-6">
           <p className="font-semibold">Check your email</p>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-base leading-relaxed text-muted-foreground">
             Click the confirmation link we sent you, then you'll come right back here.
           </p>
         </div>
@@ -105,7 +105,7 @@ export function AuthPage({
           <Button variant="secondary" className="w-full" onClick={google} disabled={busy}>
             {busy ? "Redirecting…" : "Continue with Google"}
           </Button>
-          <div className="my-5 text-center text-xs uppercase tracking-widest text-muted-foreground">
+          <div className="my-5 text-center text-sm uppercase tracking-widest text-muted-foreground">
             or
           </div>
           <Tabs defaultValue="in">

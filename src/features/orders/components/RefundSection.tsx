@@ -111,14 +111,14 @@ export function RefundSection({
     <section className="space-y-4 rounded-xl border border-border bg-card p-5">
       <div>
         <h2 className="text-3xl">Refund request</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="mt-1 text-base leading-relaxed text-muted-foreground">
           If you already transferred money but your payment was rejected, request a refund to your
           CBE or Telebirr account. Refund transfers are sent manually after review.
         </p>
       </div>
 
       {latest && (
-        <div className="space-y-2 rounded-lg border border-border bg-muted/50 p-4 text-sm">
+        <div className="space-y-2 rounded-lg border border-border bg-muted/50 p-4 text-base">
           <p className="font-semibold capitalize">Request status: {latest.status}</p>
           {latest.status === "refunded" && latest.customer_decision === "continue" && (
             <p className="text-muted-foreground">
@@ -190,7 +190,7 @@ export function RefundSection({
                   )}
                   <div className="space-y-2 border-t border-border pt-3">
                     <p className="text-sm font-semibold">Have you received this refund?</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-sm text-muted-foreground sm:text-base">
                       If you cannot find it, request an investigation first. You can choose what to
                       do with this order after the owner reviews it.
                     </p>
@@ -215,7 +215,7 @@ export function RefundSection({
                       onSubmit={submitFollowUp}
                       className="space-y-2 border-t border-border pt-3"
                     >
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-sm text-muted-foreground sm:text-base">
                         A follow-up will not automatically issue another payment.
                       </p>
                       <Textarea
@@ -300,7 +300,7 @@ export function RefundSection({
         )}
 
       {!latest && (
-        <p className="text-xs text-muted-foreground">
+        <p className="text-sm text-muted-foreground sm:text-base">
           Only request a refund if you sent the payment and it was rejected. If you did not make a
           transfer, you can{" "}
           <Link to="/" className="font-semibold text-primary underline">
@@ -310,7 +310,7 @@ export function RefundSection({
         </p>
       )}
       {latest && (
-        <p className="text-xs text-muted-foreground">
+        <p className="text-sm text-muted-foreground sm:text-base">
           Still want to order?{" "}
           <Link to="/" className="font-semibold text-primary underline">
             Browse the menu
@@ -318,7 +318,7 @@ export function RefundSection({
           .
         </p>
       )}
-      <p className="text-xs text-muted-foreground">
+      <p className="text-sm text-muted-foreground sm:text-base">
         Refund request for {orderNumber}. Approval does not transfer money automatically; the owner
         sends it and posts the transaction proof here.
       </p>
