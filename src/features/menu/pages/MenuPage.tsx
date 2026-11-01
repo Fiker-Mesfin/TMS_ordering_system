@@ -52,7 +52,7 @@ export function MenuPage() {
             {items.map((item) => (
               <article
                 key={item.id}
-                className="group overflow-hidden rounded-xl border border-border bg-card shadow-sm"
+                className="group flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm"
               >
                 <div className="aspect-[4/3] overflow-hidden sm:aspect-square">
                   <MenuPhoto
@@ -64,23 +64,25 @@ export function MenuPage() {
                     className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                   />
                 </div>
-                <div className="p-4 sm:p-5">
+                <div className="flex flex-1 flex-col p-4 sm:p-5">
                   <div className="flex items-start justify-between gap-3">
                     <h3 className="min-w-0 text-xl leading-tight sm:text-2xl">{item.name}</h3>
                     <span className="shrink-0 whitespace-nowrap pt-0.5 font-semibold text-primary">
                       {formatETB(item.price)}
                     </span>
                   </div>
-                  <p className="mt-2 text-base leading-relaxed text-card-foreground/80">
+                  <p className="mt-2 whitespace-pre-line text-base leading-relaxed text-card-foreground/80">
                     {item.description}
                   </p>
-                  <Button
-                    className="mt-4 min-h-11 w-full text-sm"
-                    disabled={!item.available}
-                    onClick={() => setSelected(item)}
-                  >
-                    {item.available ? "Add to cart" : "Sold out"}
-                  </Button>
+                  <div className="mt-auto pt-4">
+                    <Button
+                      className="min-h-11 w-full text-sm"
+                      disabled={!item.available}
+                      onClick={() => setSelected(item)}
+                    >
+                      {item.available ? "Add to cart" : "Sold out"}
+                    </Button>
+                  </div>
                 </div>
               </article>
             ))}

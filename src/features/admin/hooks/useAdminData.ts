@@ -13,6 +13,7 @@ import {
   setMealSlotAvailability,
   setMenuExtraAvailability,
   setMenuItemAvailability,
+  updateMenuItem,
 } from "@/services/adminService";
 import { getDeliverySchedule, getMealSlots } from "@/services/deliveryService";
 import { deliveryScheduleQueryKey, mealSlotsQueryKey } from "@/lib/delivery";
@@ -82,6 +83,23 @@ export function useCreateMenuItem() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: createMenuItem,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin-menu"] }),
+        queryClient.invalidateQueries({ queryKey: ["menu"] }),
+      ]);
+    },
+  });
+}
+
+export function useUpdateMenuItem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      id: string;
+      values: Parameters<typeof updateMenuItem>[1];
+      currentImageKey: string | null;
+    }) => updateMenuItem(input.id, input.values, input.currentImageKey),
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["admin-menu"] }),

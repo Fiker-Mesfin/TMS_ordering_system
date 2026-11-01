@@ -40,10 +40,12 @@ export async function getAdminOrders() {
 }
 
 export async function getAdminMenuItems() {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("menu_items")
-    .select("id,name,price,available")
-    .order("sort_order");
+    .select("id,name,description,price,image_key,available")
+    .order("sort_order")
+    .order("created_at");
+  if (error) throw error;
   return data ?? [];
 }
 
@@ -96,11 +98,86 @@ export async function createMenuItem(input: {
   description: string;
   price: number;
   available: boolean;
-  imageFile: File | null;
-  imageKey: string;
+  imageFile: File;
 }) {
+  const { data: lastItem, error: sortOrderError } = await supabase
+    .from("menu_items")
+    .select("sort_order")
+    .order("sort_order", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (sortOrderError) throw sortOrderError;
+  const sortOrder = (lastItem?.sort_order ?? 0) + 1;
+
   let uploadedPath: string | null = null;
-  let imageKey = input.imageKey;
+
+  const extensionByType: Record<string, string> = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+  };
+  const extension = extensionByType[input.imageFile.type];
+  if (!extension || input.imageFile.size > 5 * 1024 * 1024) {
+    throw new Error("Choose a JPG, PNG, or WebP picture smaller than 5 MB");
+  }
+
+  const path = `${crypto.randomUUID()}.${extension}`;
+  const { error: uploadError } = await supabase.storage
+    .from("menu-photos")
+    .upload(path, input.imageFile, { contentType: input.imageFile.type });
+  if (uploadError) throw uploadError;
+  uploadedPath = path;
+
+  try {
+    const { error } = await supabase.from("menu_items").insert({
+      name: input.name,
+      description: input.description,
+      price: input.price,
+      available: input.available,
+      image_key: `${MENU_PHOTO_PREFIX}${path}`,
+      sort_order: sortOrder,
+    });
+    if (error) throw error;
+  } catch (error) {
+    if (uploadedPath) {
+      const { error: cleanupError } = await supabase.storage
+        .from("menu-photos")
+        .remove([uploadedPath]);
+      if (cleanupError) {
+        console.error(
+          "Could not remove uploaded menu photo after failed burger creation",
+          cleanupError,
+        );
+      }
+    }
+    throw error;
+  }
+}
+
+export async function updateMenuItem(
+  id: string,
+  input: {
+    name: string;
+    description: string;
+    price: number;
+    available: boolean;
+    imageFile: File | null;
+  },
+  currentImageKey: string | null,
+) {
+  let uploadedPath: string | null = null;
+  const updates: {
+    name: string;
+    description: string;
+    price: number;
+    available: boolean;
+    image_key?: string | null;
+  } = {
+    name: input.name,
+    description: input.description,
+    price: input.price,
+    available: input.available,
+  };
 
   if (input.imageFile) {
     const extensionByType: Record<string, string> = {
@@ -119,17 +196,11 @@ export async function createMenuItem(input: {
       .upload(path, input.imageFile, { contentType: input.imageFile.type });
     if (error) throw error;
     uploadedPath = path;
-    imageKey = `${MENU_PHOTO_PREFIX}${path}`;
+    updates.image_key = `${MENU_PHOTO_PREFIX}${path}`;
   }
 
   try {
-    const { error } = await supabase.from("menu_items").insert({
-      name: input.name,
-      description: input.description,
-      price: input.price,
-      available: input.available,
-      image_key: imageKey,
-    });
+    const { error } = await supabase.from("menu_items").update(updates).eq("id", id);
     if (error) throw error;
   } catch (error) {
     if (uploadedPath) {
@@ -138,11 +209,22 @@ export async function createMenuItem(input: {
         .remove([uploadedPath]);
       if (cleanupError) {
         console.error(
-          "Could not remove uploaded menu photo after failed burger creation",
+          "Could not remove uploaded menu photo after failed burger update",
           cleanupError,
         );
       }
     }
     throw error;
+  }
+
+  const nextImageKey = updates.image_key;
+  if (
+    currentImageKey?.startsWith(MENU_PHOTO_PREFIX) &&
+    nextImageKey !== undefined &&
+    nextImageKey !== currentImageKey
+  ) {
+    const oldPath = currentImageKey.slice(MENU_PHOTO_PREFIX.length);
+    const { error } = await supabase.storage.from("menu-photos").remove([oldPath]);
+    if (error) console.error("Could not remove replaced menu photo", error);
   }
 }
