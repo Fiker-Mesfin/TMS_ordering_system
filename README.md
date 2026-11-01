@@ -71,6 +71,11 @@ SQL Editor:
 9. `0008_delivery_schedule_ambiguity.sql` — fixes ambiguous `delivery_date`
    references when loading customer/admin delivery schedules and rescheduling
    options. Apply this after `0007_business_day_delivery.sql`.
+10. `0009_cancel_unpaid_order.sql` — lets customers cancel orders before payment
+    proof is submitted.
+11. `0010_burger_sauce_extras.sql` — adds burger sauce and ketchup as menu extras.
+12. `0011_aau_delivery_areas.sql` — adds AAU FBE and AAU Yared Music School as
+    delivery areas.
 
 The first account created after applying the core migration is assigned the
 admin role by the database trigger. Sign in with that account to manage the
@@ -106,7 +111,8 @@ callback URL shown in Supabase's Google-provider settings.
   Admins receive in-app notifications when payment proof or refund requests
   need review.
 - Use the owner area to manage the menu, delivery areas, meal/date availability,
-  and payment reviews.
+  and payment reviews. Filter orders by delivery date, burger, campus, meal
+  time, and payment status, then export matching orders to Excel.
 - Switch between dark and light themes; browse the About page.
 
 Payment account information displayed to customers is configured in

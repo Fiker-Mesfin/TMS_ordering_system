@@ -258,12 +258,12 @@ export function CheckoutPage() {
           </RadioGroup>
         </fieldset>
         <div className="space-y-1.5">
-          <Label htmlFor="notes">Directions or landmark (optional)</Label>
+          <Label htmlFor="notes">Building, hall, room, or landmark (optional)</Label>
           <Textarea
             id="notes"
             name="notes"
             maxLength={500}
-            placeholder="Add directions or other delivery details"
+            placeholder="For example: building, hall, room, gate, or a nearby landmark"
           />
         </div>
         <Button

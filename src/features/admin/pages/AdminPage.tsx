@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { format } from "date-fns";
+import { Download, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
@@ -9,6 +10,7 @@ import { StatusBadge } from "@/shared/feedback/status-badge";
 import { formatDeliveryDate } from "@/lib/delivery";
 import { useAuth } from "@/lib/auth";
 import { formatETB } from "@/lib/shop";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import {
   getAdminRefundRequests,
   getRefundProofUrl,
@@ -16,6 +18,7 @@ import {
   uploadRefundProof,
 } from "@/services/refundService";
 import { OwnerMenuForm } from "../components/OwnerMenuForm";
+import { downloadAdminOrdersXlsx } from "../components/adminOrdersExport";
 import type { MenuItem } from "@/types/menu";
 import {
   useAdminCatalog,
@@ -431,34 +434,202 @@ function RefundRequestRow({ request }: { request: RefundAdminRow }) {
 
 function OrdersTab() {
   const { data = [] } = useAdminOrders();
+  const [deliveryDate, setDeliveryDate] = useState("");
+  const [burger, setBurger] = useState("all");
+  const [deliveryArea, setDeliveryArea] = useState("all");
+  const [mealSlot, setMealSlot] = useState("all");
+  const [paymentStatus, setPaymentStatus] = useState("all");
+  const areas = [
+    ...new Set([
+      "AAU FBE",
+      "AAU Yared Music School",
+      ...data.map((order) => order.delivery_area_name).filter(Boolean),
+    ]),
+  ].sort((a, b) => a.localeCompare(b));
+  const mealSlots = [
+    ...new Set(["dinner", ...data.map((order) => order.meal_slot).filter(Boolean)]),
+  ].sort((a, b) => a.localeCompare(b));
+  const filteredOrders = data.filter((order) => {
+    const matchesDate = !deliveryDate || order.delivery_date === deliveryDate;
+    const matchesArea = deliveryArea === "all" || order.delivery_area_name === deliveryArea;
+    const matchesMeal = mealSlot === "all" || order.meal_slot === mealSlot;
+    const payment = Array.isArray(order.payments) ? order.payments[0] : order.payments;
+    const matchesPayment =
+      paymentStatus === "all" || (payment?.status ?? "unverified") === paymentStatus;
+    const matchesBurger =
+      burger === "all" ||
+      order.order_items.some((item) => {
+        const name = item.name.trim().toLowerCase();
+        return burger === "signature"
+          ? name === "tms signature burger"
+          : name === "tms double trouble";
+      });
+    return matchesDate && matchesArea && matchesMeal && matchesBurger && matchesPayment;
+  });
+  function getBurgerCounts(orders: typeof data) {
+    return orders.reduce(
+      (counts, order) => {
+        for (const item of order.order_items) {
+          const name = item.name.trim().toLowerCase();
+          if (name === "tms signature burger") counts.signature += item.quantity;
+          if (name === "tms double trouble") counts.doubleTrouble += item.quantity;
+        }
+        return counts;
+      },
+      { signature: 0, doubleTrouble: 0 },
+    );
+  }
+  const totalBurgerCounts = getBurgerCounts(data);
+  const filteredBurgerCounts = getBurgerCounts(filteredOrders);
+
+  function clearOrderFilters() {
+    setDeliveryDate("");
+    setBurger("all");
+    setDeliveryArea("all");
+    setMealSlot("all");
+    setPaymentStatus("all");
+  }
+
   return (
-    <ul className="mt-6 space-y-2">
-      {data.map((o) => {
-        const pay = Array.isArray(o.payments) ? o.payments[0] : o.payments;
-        return (
-          <li key={o.id} className="rounded-xl border border-border bg-card p-4 text-sm">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="font-display text-lg uppercase">{o.order_number}</span>
-              <span className="flex gap-1">
-                {!(pay?.status === "rejected") && (
-                  <StatusBadge status={o.cancelled_at ? "cancelled" : o.status} />
-                )}
-                {pay && <StatusBadge status={pay.status} label={`payment ${pay.status}`} />}
-              </span>
-            </div>
-            <p className="mt-1 text-muted-foreground">
-              {o.order_items.map((i) => `${i.quantity}× ${i.name}`).join(", ")} ·{" "}
-              {formatETB(o.total)}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Delivery: {formatDeliveryDate(o.delivery_date)} · {o.meal_slot} ·{" "}
-              {o.delivery_area_name} — {o.address} · {o.contact_name} {o.contact_phone} ·{" "}
-              {format(new Date(o.created_at), "d MMM HH:mm")}
-            </p>
-          </li>
-        );
-      })}
-    </ul>
+    <div className="mt-6 space-y-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <label className="flex flex-col gap-1 text-sm font-medium" htmlFor="orders-filter-date">
+          Delivery date
+          <Input
+            id="orders-filter-date"
+            type="date"
+            value={deliveryDate}
+            onChange={(event) => setDeliveryDate(event.target.value)}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-medium" htmlFor="orders-filter-burger">
+          Burger
+          <Select value={burger} onValueChange={setBurger}>
+            <SelectTrigger id="orders-filter-burger">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All burgers</SelectItem>
+              <SelectItem value="signature">TMS Signature Burger</SelectItem>
+              <SelectItem value="double">TMS Double Trouble</SelectItem>
+            </SelectContent>
+          </Select>
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-medium" htmlFor="orders-filter-area">
+          Campus / area
+          <Select value={deliveryArea} onValueChange={setDeliveryArea}>
+            <SelectTrigger id="orders-filter-area">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All campuses</SelectItem>
+              {areas.map((area) => (
+                <SelectItem key={area} value={area}>
+                  {area}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-medium" htmlFor="orders-filter-meal">
+          Delivery time
+          <Select value={mealSlot} onValueChange={setMealSlot}>
+            <SelectTrigger id="orders-filter-meal">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All meal times</SelectItem>
+              {mealSlots.map((slot) => (
+                <SelectItem key={slot} value={slot}>
+                  {slot}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-medium" htmlFor="orders-filter-payment">
+          Payment status
+          <Select value={paymentStatus} onValueChange={setPaymentStatus}>
+            <SelectTrigger id="orders-filter-payment">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All payment statuses</SelectItem>
+              <SelectItem value="verified">Verified</SelectItem>
+              <SelectItem value="unverified">Unverified</SelectItem>
+              <SelectItem value="rejected">Rejected</SelectItem>
+            </SelectContent>
+          </Select>
+        </label>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+          <p className="text-sm font-semibold text-primary">Orders loaded</p>
+          <p className="mt-1 font-display text-3xl text-foreground">{data.length}</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Signature: {totalBurgerCounts.signature} · Double Trouble:{" "}
+            {totalBurgerCounts.doubleTrouble}
+          </p>
+        </div>
+        <div className="rounded-xl border border-accent/50 bg-accent/20 p-4">
+          <p className="text-sm font-semibold text-accent-foreground">Orders matching filters</p>
+          <p className="mt-1 font-display text-3xl text-foreground">{filteredOrders.length}</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Signature: {filteredBurgerCounts.signature} · Double Trouble:{" "}
+            {filteredBurgerCounts.doubleTrouble}
+          </p>
+        </div>
+      </div>
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={filteredOrders.length === 0}
+          onClick={() => downloadAdminOrdersXlsx(filteredOrders)}
+        >
+          <FileSpreadsheet />
+          <Download />
+          Export filtered orders to Excel
+        </Button>
+        <Button type="button" size="sm" variant="outline" onClick={clearOrderFilters}>
+          Clear filters
+        </Button>
+      </div>
+      {filteredOrders.length === 0 ? (
+        <p className="rounded-xl border border-border bg-card p-5 text-muted-foreground">
+          No orders match these filters.
+        </p>
+      ) : (
+        <ul className="space-y-2">
+          {filteredOrders.map((o) => {
+            const pay = Array.isArray(o.payments) ? o.payments[0] : o.payments;
+            return (
+              <li key={o.id} className="rounded-xl border border-border bg-card p-4 text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-display text-lg uppercase">{o.order_number}</span>
+                  <span className="flex gap-1">
+                    {!(pay?.status === "rejected") && (
+                      <StatusBadge status={o.cancelled_at ? "cancelled" : o.status} />
+                    )}
+                    {pay && <StatusBadge status={pay.status} label={`payment ${pay.status}`} />}
+                  </span>
+                </div>
+                <p className="mt-1 text-muted-foreground">
+                  {o.order_items.map((i) => `${i.quantity}× ${i.name}`).join(", ")} ·{" "}
+                  {formatETB(o.total)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Delivery: {formatDeliveryDate(o.delivery_date)} · {o.meal_slot} ·{" "}
+                  {o.delivery_area_name} — {o.address} · {o.contact_name} {o.contact_phone} ·{" "}
+                  {format(new Date(o.created_at), "d MMM HH:mm")}
+                </p>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
   );
 }
 
