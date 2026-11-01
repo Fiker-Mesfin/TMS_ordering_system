@@ -47,8 +47,8 @@ export function AboutPage() {
       <section className="bg-background">
         <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 py-14 md:grid-cols-[1fr_minmax(0,420px)] md:py-20">
           <div className="max-w-3xl">
-            <p className="inline-flex rounded-full border border-primary/30 bg-background/90 px-4 py-2 text-sm font-bold uppercase tracking-[0.2em] text-primary shadow-md backdrop-blur-sm">
-              TMS Burger · Addis Ababa
+            <p className="inline-flex rounded-full border border-primary/30 bg-background/90 px-4 py-2 text-sm font-bold tracking-[0.2em] text-primary shadow-md backdrop-blur-sm">
+              TM's Burger · Addis Ababa
             </p>
             <h1 className="mt-6 font-sans text-4xl font-bold leading-tight tracking-tight normal-case text-foreground sm:text-6xl">
               Fresh burgers, <span className="text-primary">made for your campus.</span>
@@ -66,7 +66,7 @@ export function AboutPage() {
           </div>
           <img
             src={hero}
-            alt="TMS burger prepared over open flames"
+            alt="TM's burger prepared over open flames"
             className="h-64 w-full rounded-2xl object-cover shadow-flame sm:h-80 md:h-[360px]"
             width={1600}
             height={912}

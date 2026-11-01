@@ -510,8 +510,8 @@ function OrdersTab() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All burgers</SelectItem>
-              <SelectItem value="signature">TMS Signature Burger</SelectItem>
-              <SelectItem value="double">TMS Double Trouble</SelectItem>
+              <SelectItem value="signature">TM's Signature Burger</SelectItem>
+              <SelectItem value="double">TM's Double Trouble</SelectItem>
             </SelectContent>
           </Select>
         </label>

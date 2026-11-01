@@ -33,8 +33,8 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-2 px-3 sm:h-16 sm:px-4">
-        <Link to="/" className="font-display text-3xl uppercase tracking-wide text-primary">
-          TMS<span className="text-foreground">.</span>
+        <Link to="/" className="font-display text-3xl tracking-wide text-primary">
+          TM's<span className="text-foreground">.</span>
         </Link>
         <div className="flex items-center gap-0.5 sm:gap-1.5 lg:gap-2">
           <nav aria-label="Main navigation" className="hidden items-center gap-2 sm:flex lg:gap-3">

@@ -14,7 +14,7 @@ const adminOrder: AdminOrderExportRow = {
   meal_slot: "lunch",
   address: "Inside campus / Gebi",
   notes: "Building 4, room 12",
-  order_items: [{ name: "TMS Signature Burger", quantity: 2 }],
+  order_items: [{ name: "TM's Signature Burger", quantity: 2 }],
   total: 700,
   status: "active",
   cancelled_at: null,

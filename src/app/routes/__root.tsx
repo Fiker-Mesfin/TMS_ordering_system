@@ -57,8 +57,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "TMS Burgers" },
-      { name: "description", content: "Order TMS burgers for free delivery to AAU campuses." },
+      { title: "TM's Burgers" },
+      { name: "description", content: "Order TM's burgers for free delivery to AAU campuses." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -113,7 +113,7 @@ function RootComponent() {
               <div className="grid gap-8 sm:grid-cols-2 sm:items-start">
                 <div>
                   <p className="font-display text-2xl uppercase tracking-wide text-foreground">
-                    TMS Burgers
+                    TM's Burgers
                   </p>
                   <p className="mt-2 max-w-sm leading-relaxed">
                     Fresh, satisfying burgers delivered free to AAU campuses across Addis Ababa.
@@ -160,7 +160,7 @@ function RootComponent() {
                           rel="noopener noreferrer"
                           className="transition-colors hover:text-primary"
                         >
-                          Telegram: @TMS_BG
+                          Telegram
                         </a>
                       </li>
                       <li>
@@ -176,7 +176,7 @@ function RootComponent() {
                 </div>
               </div>
               <div className="mt-8 border-t border-border pt-5 text-xs">
-                <p>© {new Date().getFullYear()} TMS Burgers. All rights reserved.</p>
+                <p>© {new Date().getFullYear()} TM's Burgers. All rights reserved.</p>
               </div>
             </div>
           </footer>

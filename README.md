@@ -1,4 +1,4 @@
-# TMS Burger
+# TM's Burger
 
 A campus burger ordering web app for Addis Ababa University (AAU), built with
 React, TanStack Start/Router, Tailwind CSS, and Supabase.
@@ -76,6 +76,8 @@ SQL Editor:
 11. `0010_burger_sauce_extras.sql` — adds burger sauce and ketchup as menu extras.
 12. `0011_aau_delivery_areas.sql` — adds AAU FBE and AAU Yared Music School as
     delivery areas.
+13. `0012_update_brand_name.sql` — updates the seeded menu item to use the TM's
+    brand name.
 
 The first account created after applying the core migration is assigned the
 admin role by the database trigger. Sign in with that account to manage the
