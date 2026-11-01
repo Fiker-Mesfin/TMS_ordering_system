@@ -492,7 +492,8 @@ function OrderingTab() {
       <section className="rounded-xl border border-border bg-card p-4">
         <h2 className="text-2xl">Delivery dates</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Customers can order for today or tomorrow until you close that date.
+          Customers can choose the next two weekdays. Close dates here to pause orders; manage
+          availability up to five business days ahead.
         </p>
         {schedule.isLoading ? (
           <p className="mt-3 text-sm text-muted-foreground">Loading delivery dates…</p>

@@ -66,6 +66,11 @@ SQL Editor:
    customer report a missing transfer for investigation or confirm receipt and
    either continue the same order with a new payment or close it and reorder.
    Apply this migration after `0005_refund_requests.sql`.
+8. `0007_business_day_delivery.sql` — limits delivery scheduling to weekdays
+   and adds business-day availability, validation, and rescheduling rules.
+9. `0008_delivery_schedule_ambiguity.sql` — fixes ambiguous `delivery_date`
+   references when loading customer/admin delivery schedules and rescheduling
+   options. Apply this after `0007_business_day_delivery.sql`.
 
 The first account created after applying the core migration is assigned the
 admin role by the database trigger. Sign in with that account to manage the
@@ -85,8 +90,11 @@ callback URL shown in Supabase's Google-provider settings.
 - Browse the burger menu and extras; add configured items to a session-persistent
   cart.
 - Create an account, sign in with email or Google, and view personal orders.
-- Place a preorder for today or tomorrow when the date and selected meal period
-  are open.
+- Place a preorder for one of the next two weekdays when the date and selected
+  meal period are open; weekend deliveries are not available. Admins can close
+  delivery dates manually.
+- Reschedule an active order forward by up to two weekdays before 11:00 LT on
+  the day before its scheduled delivery.
 - Choose an AAU delivery area and submit payment details and optional receipt
   for bank transfer.
 - Follow order and payment progress, including verification, rejection notes,

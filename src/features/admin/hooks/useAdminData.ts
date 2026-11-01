@@ -15,8 +15,12 @@ import {
   setMenuItemAvailability,
   updateMenuItem,
 } from "@/services/adminService";
-import { getDeliverySchedule, getMealSlots } from "@/services/deliveryService";
-import { deliveryScheduleQueryKey, mealSlotsQueryKey } from "@/lib/delivery";
+import { getAdminDeliverySchedule, getMealSlots } from "@/services/deliveryService";
+import {
+  adminDeliveryScheduleQueryKey,
+  deliveryScheduleQueryKey,
+  mealSlotsQueryKey,
+} from "@/lib/delivery";
 import {
   completePaymentRefund,
   getAdminRefundRequests,
@@ -45,8 +49,8 @@ export function useAdminCatalog() {
 
 export function useAdminOrderingAvailability() {
   const schedule = useQuery({
-    queryKey: deliveryScheduleQueryKey,
-    queryFn: getDeliverySchedule,
+    queryKey: adminDeliveryScheduleQueryKey,
+    queryFn: getAdminDeliverySchedule,
     refetchInterval: 60_000,
   });
   const meals = useQuery({ queryKey: mealSlotsQueryKey, queryFn: getMealSlots });
@@ -75,7 +79,12 @@ export function useSetDeliveryDateOpen() {
   return useMutation({
     mutationFn: (input: { deliveryDate: string; isOpen: boolean }) =>
       setDeliveryDateOpen(input.deliveryDate, input.isOpen),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: deliveryScheduleQueryKey }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: adminDeliveryScheduleQueryKey }),
+        queryClient.invalidateQueries({ queryKey: deliveryScheduleQueryKey }),
+      ]);
+    },
   });
 }
 

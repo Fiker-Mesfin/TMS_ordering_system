@@ -159,6 +159,9 @@ export function CheckoutPage() {
           <legend className="text-base font-medium leading-snug">
             Delivery date <RequiredMark />
           </legend>
+          <p className="text-sm text-muted-foreground">
+            Choose one of the next two weekdays. We don’t deliver on weekends.
+          </p>
           {datesLoading ? (
             <p className="text-base text-muted-foreground">Checking available delivery dates…</p>
           ) : deliveryScheduleError ? (
@@ -189,7 +192,7 @@ export function CheckoutPage() {
             </RadioGroup>
           ) : (
             <p className="rounded-md border border-destructive/50 p-3 text-base text-destructive">
-              Ordering is currently closed for today and tomorrow.
+              No delivery dates are currently available. Please check again later.
             </p>
           )}
         </fieldset>
