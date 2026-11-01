@@ -8,9 +8,11 @@ import { Label } from "@/shared/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/shared/ui/radio-group";
 import { RequiredMark } from "@/shared/ui/required-mark";
 import { StatusBadge } from "@/shared/feedback/status-badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import { formatDeliveryDate } from "@/lib/delivery";
 import { useAuth } from "@/lib/auth";
 import { formatETB, PAYMENT_ACCOUNTS } from "@/lib/shop";
+import type { Tables } from "@/integrations/supabase/types";
 import {
   useOrderDetails,
   useSubmitPaymentProof,
@@ -82,10 +84,12 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
           </p>
         </div>
         <div className="flex flex-col items-start gap-1 lg:flex-row lg:items-center lg:gap-2">
-          <StatusBadge
-            status={order.cancelled_at ? "cancelled" : order.status}
-            className="text-sm sm:text-base"
-          />
+          {!(pay?.status === "rejected") && (
+            <StatusBadge
+              status={order.cancelled_at ? "cancelled" : order.status}
+              className="text-sm sm:text-base"
+            />
+          )}
           {pay && (
             <StatusBadge
               status={pay.status}
@@ -132,13 +136,12 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
           {progressSteps.map((step, index) => (
             <li
               key={step.label}
-              className={`rounded-lg border p-3 text-base leading-snug ${
-                step.complete
+              className={`rounded-lg border p-3 text-base leading-snug ${step.complete
                   ? "border-success/50 bg-success/10 text-success"
                   : paymentRejected && index === 2
                     ? "border-destructive/50 bg-destructive/10 text-destructive"
                     : "border-border text-muted-foreground"
-              }`}
+                }`}
             >
               <span className="block text-sm font-semibold uppercase tracking-wide">
                 Step {index + 1}
@@ -204,22 +207,35 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
               </Link>
             </section>
           )}
-          {pay?.status === "rejected" && (
-            <RefundSection
-              orderId={order.id}
-              orderNumber={order.order_number}
-              amount={Number(pay.amount)}
-              requests={order.refund_requests}
-              paymentSubmittedAt={pay.submitted_at}
-            />
-          )}
-          {pay && !refundBlocksPayment && !order.cancelled_at && (
-            <PaymentSection
+          {pay?.status === "rejected" && !refundBlocksPayment && !order.cancelled_at ? (
+            <RejectedPaymentActions
               orderId={order.id}
               orderNumber={order.order_number}
               total={Number(order.total)}
               payment={pay}
+              amount={Number(pay.amount)}
+              refundRequests={order.refund_requests}
             />
+          ) : (
+            <>
+              {pay?.status === "rejected" && (
+                <RefundSection
+                  orderId={order.id}
+                  orderNumber={order.order_number}
+                  amount={Number(pay.amount)}
+                  requests={order.refund_requests}
+                  paymentSubmittedAt={pay.submitted_at}
+                />
+              )}
+              {pay && !refundBlocksPayment && !order.cancelled_at && (
+                <PaymentSection
+                  orderId={order.id}
+                  orderNumber={order.order_number}
+                  total={Number(order.total)}
+                  payment={pay}
+                />
+              )}
+            </>
           )}
         </>
       )}
@@ -234,6 +250,76 @@ type Payment = {
   submitted_at: string | null;
   review_note: string | null;
 };
+
+type RefundRequest = Tables<"refund_requests">;
+
+function RejectedPaymentActions({
+  orderId,
+  orderNumber,
+  total,
+  payment,
+  amount,
+  refundRequests,
+}: {
+  orderId: string;
+  orderNumber: string;
+  total: number;
+  payment: Payment;
+  amount: number;
+  refundRequests: RefundRequest[];
+}) {
+  const [activeTab, setActiveTab] = useState<"pay" | "refund">("pay");
+
+  return (
+    <div className="space-y-4">
+      <Tabs
+        value={activeTab}
+        onValueChange={(val) => setActiveTab(val as "pay" | "refund")}
+        className="w-full"
+      >
+        <TabsList className="grid w-full grid-cols-2 h-12 p-1 bg-muted rounded-xl border border-border">
+          <TabsTrigger
+            value="pay"
+            className="h-full rounded-lg text-sm sm:text-base font-semibold transition-all cursor-pointer data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+          >
+            Proceed to pay
+          </TabsTrigger>
+          <TabsTrigger
+            value="refund"
+            className="h-full rounded-lg text-sm sm:text-base font-semibold transition-all cursor-pointer data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+          >
+            Request refund
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent
+          value="pay"
+          forceMount
+          className={activeTab === "pay" ? "mt-4 block" : "mt-4 hidden"}
+        >
+          <PaymentSection
+            orderId={orderId}
+            orderNumber={orderNumber}
+            total={total}
+            payment={payment}
+          />
+        </TabsContent>
+        <TabsContent
+          value="refund"
+          forceMount
+          className={activeTab === "refund" ? "mt-4 block" : "mt-4 hidden"}
+        >
+          <RefundSection
+            orderId={orderId}
+            orderNumber={orderNumber}
+            amount={amount}
+            requests={refundRequests}
+            paymentSubmittedAt={payment.submitted_at}
+          />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
 
 function PaymentSection({
   orderId,
@@ -366,7 +452,7 @@ function PaymentSection({
             }}
             className="text-base font-semibold text-primary hover:underline transition-colors block text-left"
           >
-            Entered the wrong reference? Update payment details →
+            Entered the wrong reference? Update payment details
           </button>
         </div>
       </section>
