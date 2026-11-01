@@ -1,4 +1,14 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { Link } from "@tanstack/react-router";
+import { Search, X, RotateCcw } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/ui/select";
+import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Button } from "@/shared/ui/button";
@@ -428,36 +438,350 @@ function RefundRequestRow({ request }: { request: RefundAdminRow }) {
   );
 }
 
+type StatusFilter = "all" | "confirmed" | "unverified" | "rejected" | "cancelled";
+type SortOption = "created_desc" | "created_asc" | "delivery_asc" | "total_desc" | "total_asc";
+
+type AdminOrder = NonNullable<Awaited<ReturnType<typeof import("@/services/adminService").getAdminOrders>>>[number];
+
+function getOrderStatusKey(order: AdminOrder): "confirmed" | "unverified" | "rejected" | "cancelled" {
+  const pay = Array.isArray(order.payments)
+    ? [...order.payments].sort((a, b) => ((b as any).created_at || "").localeCompare((a as any).created_at || ""))[0] || order.payments[0]
+    : order.payments;
+
+  if (order.cancelled_at) return "cancelled";
+  if (pay?.status === "rejected") return "rejected";
+  if (order.status === "confirmed" || pay?.status === "verified") return "confirmed";
+  return "unverified";
+}
+
 function OrdersTab() {
-  const { data = [] } = useAdminOrders();
+  const { data = [], isLoading } = useAdminOrders();
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [dateFilter, setDateFilter] = useState("all");
+  const [mealSlotFilter, setMealSlotFilter] = useState("all");
+  const [areaFilter, setAreaFilter] = useState("all");
+  const [sortBy, setSortBy] = useState<SortOption>("created_desc");
+
+  // Status counts
+  const counts = useMemo(() => {
+    const res = { all: data.length, confirmed: 0, unverified: 0, rejected: 0, cancelled: 0 };
+    for (const o of data) {
+      const key = getOrderStatusKey(o);
+      res[key]++;
+    }
+    return res;
+  }, [data]);
+
+  // Unique delivery dates and areas
+  const uniqueDates = useMemo(() => {
+    const set = new Set<string>();
+    for (const o of data) {
+      if (o.delivery_date) set.add(o.delivery_date);
+    }
+    return Array.from(set).sort();
+  }, [data]);
+
+  const uniqueAreas = useMemo(() => {
+    const set = new Set<string>();
+    for (const o of data) {
+      if (o.delivery_area_name) set.add(o.delivery_area_name);
+    }
+    return Array.from(set).sort();
+  }, [data]);
+
+  // Filter
+  const filtered = useMemo(() => {
+    return data.filter((o) => {
+      if (statusFilter !== "all") {
+        if (getOrderStatusKey(o) !== statusFilter) return false;
+      }
+      if (dateFilter !== "all" && o.delivery_date !== dateFilter) {
+        return false;
+      }
+      if (mealSlotFilter !== "all" && o.meal_slot?.toLowerCase() !== mealSlotFilter.toLowerCase()) {
+        return false;
+      }
+      if (areaFilter !== "all" && o.delivery_area_name !== areaFilter) {
+        return false;
+      }
+      if (search.trim()) {
+        const q = search.trim().toLowerCase();
+        const matchNumber = o.order_number?.toLowerCase().includes(q);
+        const matchName = o.contact_name?.toLowerCase().includes(q);
+        const matchPhone = o.contact_phone?.toLowerCase().includes(q);
+        const matchArea = o.delivery_area_name?.toLowerCase().includes(q);
+        const matchAddress = o.address?.toLowerCase().includes(q);
+        const matchItems = o.order_items?.some((i) => i.name.toLowerCase().includes(q));
+
+        if (!matchNumber && !matchName && !matchPhone && !matchArea && !matchAddress && !matchItems) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [data, statusFilter, dateFilter, mealSlotFilter, areaFilter, search]);
+
+  // Sort
+  const sorted = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      if (sortBy === "created_asc") {
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      }
+      if (sortBy === "delivery_asc") {
+        const dateComp = (a.delivery_date || "").localeCompare(b.delivery_date || "");
+        if (dateComp !== 0) return dateComp;
+        const slotComp = (a.meal_slot || "").localeCompare(b.meal_slot || "");
+        if (slotComp !== 0) return slotComp;
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      }
+      if (sortBy === "total_desc") {
+        return Number(b.total) - Number(a.total);
+      }
+      if (sortBy === "total_asc") {
+        return Number(a.total) - Number(b.total);
+      }
+      // Default: created_desc (newest / latest on top)
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+  }, [filtered, sortBy]);
+
+  const hasActiveFilters =
+    search !== "" ||
+    statusFilter !== "all" ||
+    dateFilter !== "all" ||
+    mealSlotFilter !== "all" ||
+    areaFilter !== "all" ||
+    sortBy !== "created_desc";
+
+  function resetFilters() {
+    setSearch("");
+    setStatusFilter("all");
+    setDateFilter("all");
+    setMealSlotFilter("all");
+    setAreaFilter("all");
+    setSortBy("created_desc");
+  }
+
+  const statusPills: { key: StatusFilter; label: string }[] = [
+    { key: "all", label: "All" },
+    { key: "confirmed", label: "Confirmed" },
+    { key: "unverified", label: "Under Review" },
+    { key: "rejected", label: "Rejected" },
+    { key: "cancelled", label: "Cancelled" },
+  ];
+
+  if (isLoading) {
+    return <p className="mt-6 text-muted-foreground">Loading orders…</p>;
+  }
+
   return (
-    <ul className="mt-6 space-y-2">
-      {data.map((o) => {
-        const pay = Array.isArray(o.payments) ? o.payments[0] : o.payments;
-        return (
-          <li key={o.id} className="rounded-xl border border-border bg-card p-4 text-sm">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="font-display text-lg uppercase">{o.order_number}</span>
-              <span className="flex gap-1">
-                {!(pay?.status === "rejected") && (
-                  <StatusBadge status={o.cancelled_at ? "cancelled" : o.status} />
+    <div className="mt-6 space-y-4">
+      {/* Search & Status Pills */}
+      <div className="space-y-3">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by order #, customer, phone, item, area..."
+            className="pl-9 pr-9 bg-card"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+              aria-label="Clear search"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1.5">
+          {statusPills.map((pill) => {
+            const isSelected = statusFilter === pill.key;
+            return (
+              <button
+                key={pill.key}
+                type="button"
+                onClick={() => setStatusFilter(pill.key)}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer",
+                  isSelected
+                    ? "bg-primary text-primary-foreground shadow-xs"
+                    : "bg-card border border-border text-muted-foreground hover:text-foreground hover:bg-muted"
                 )}
-                {pay && <StatusBadge status={pay.status} label={`payment ${pay.status}`} />}
-              </span>
-            </div>
-            <p className="mt-1 text-muted-foreground">
-              {o.order_items.map((i) => `${i.quantity}× ${i.name}`).join(", ")} ·{" "}
-              {formatETB(o.total)}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Delivery: {formatDeliveryDate(o.delivery_date)} · {o.meal_slot} ·{" "}
-              {o.delivery_area_name} — {o.address} · {o.contact_name} {o.contact_phone} ·{" "}
-              {format(new Date(o.created_at), "d MMM HH:mm")}
-            </p>
-          </li>
-        );
-      })}
-    </ul>
+              >
+                <span>{pill.label}</span>
+                <span
+                  className={cn(
+                    "rounded-full px-1.5 py-0.2 text-[10px] font-bold",
+                    isSelected
+                      ? "bg-primary-foreground/20 text-primary-foreground"
+                      : "bg-muted text-muted-foreground"
+                  )}
+                >
+                  {counts[pill.key]}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Secondary filter controls */}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
+        <div className="space-y-1">
+          <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+            Delivery Date
+          </label>
+          <Select value={dateFilter} onValueChange={setDateFilter}>
+            <SelectTrigger className="h-9 bg-card text-xs">
+              <SelectValue placeholder="All dates" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All dates</SelectItem>
+              {uniqueDates.map((d) => (
+                <SelectItem key={d} value={d}>
+                  {formatDeliveryDate(d)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+            Meal Slot
+          </label>
+          <Select value={mealSlotFilter} onValueChange={setMealSlotFilter}>
+            <SelectTrigger className="h-9 bg-card text-xs capitalize">
+              <SelectValue placeholder="All slots" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All slots</SelectItem>
+              <SelectItem value="breakfast">Breakfast</SelectItem>
+              <SelectItem value="lunch">Lunch</SelectItem>
+              <SelectItem value="dinner">Dinner</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+            Delivery Area
+          </label>
+          <Select value={areaFilter} onValueChange={setAreaFilter}>
+            <SelectTrigger className="h-9 bg-card text-xs">
+              <SelectValue placeholder="All areas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All areas</SelectItem>
+              {uniqueAreas.map((a) => (
+                <SelectItem key={a} value={a}>
+                  {a}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+            Sort By
+          </label>
+          <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
+            <SelectTrigger className="h-9 bg-card text-xs">
+              <SelectValue placeholder="Sort orders" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="created_desc">Newest first (default)</SelectItem>
+              <SelectItem value="created_asc">Oldest first</SelectItem>
+              <SelectItem value="delivery_asc">Delivery date (soonest)</SelectItem>
+              <SelectItem value="total_desc">Highest total</SelectItem>
+              <SelectItem value="total_asc">Lowest total</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Results header & Reset */}
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground pt-1">
+        <p>
+          Showing <span className="font-semibold text-foreground">{sorted.length}</span> of{" "}
+          <span className="font-semibold text-foreground">{data.length}</span> orders
+        </p>
+        {hasActiveFilters && (
+          <button
+            type="button"
+            onClick={resetFilters}
+            className="inline-flex items-center gap-1 font-semibold text-primary hover:underline cursor-pointer"
+          >
+            <RotateCcw className="h-3 w-3" />
+            Reset filters
+          </button>
+        )}
+      </div>
+
+      {/* Orders list or empty state */}
+      {sorted.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-border bg-card/40 p-8 text-center">
+          <p className="text-base font-semibold">No orders match the selected filters</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Try adjusting your search query, status, or date filters.
+          </p>
+          {hasActiveFilters && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={resetFilters}
+              className="mt-4"
+            >
+              Reset filters
+            </Button>
+          )}
+        </div>
+      ) : (
+        <ul className="space-y-2">
+          {sorted.map((o) => {
+            const pay = Array.isArray(o.payments)
+              ? [...o.payments].sort((a, b) => ((b as any).created_at || "").localeCompare((a as any).created_at || ""))[0] || o.payments[0]
+              : o.payments;
+            return (
+              <li key={o.id} className="rounded-xl border border-border bg-card p-4 text-sm transition-colors hover:border-primary/40">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <Link
+                    to="/orders/$orderId"
+                    params={{ orderId: o.id }}
+                    className="font-display text-lg uppercase hover:text-primary transition-colors underline-offset-4 hover:underline"
+                  >
+                    {o.order_number}
+                  </Link>
+                  <span className="flex gap-1">
+                    {!(pay?.status === "rejected") && (
+                      <StatusBadge status={o.cancelled_at ? "cancelled" : o.status} />
+                    )}
+                    {pay && <StatusBadge status={pay.status} label={`payment ${pay.status}`} />}
+                  </span>
+                </div>
+                <p className="mt-1 text-muted-foreground">
+                  {o.order_items.map((i) => `${i.quantity}× ${i.name}`).join(", ")} ·{" "}
+                  <strong className="text-foreground">{formatETB(o.total)}</strong>
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Delivery: {formatDeliveryDate(o.delivery_date)} · {o.meal_slot} ·{" "}
+                  {o.delivery_area_name} — {o.address} · {o.contact_name} {o.contact_phone} ·{" "}
+                  {format(new Date(o.created_at), "d MMM HH:mm")}
+                </p>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
   );
 }
 

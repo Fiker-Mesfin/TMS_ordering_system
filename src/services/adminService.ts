@@ -32,7 +32,7 @@ export async function reviewPayment(paymentId: string, approve: boolean, note: s
 export async function getAdminOrders() {
   const { data, error } = await supabase
     .from("orders")
-    .select("*, order_items(name, quantity), payments(status)")
+    .select("*, order_items(name, quantity), payments(status, created_at)")
     .order("created_at", { ascending: false })
     .limit(200);
   if (error) throw error;
