@@ -59,10 +59,12 @@ export function MyOrdersPage() {
                   <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:flex-col sm:items-end sm:text-right">
                     <p className="font-semibold">{formatETB(o.total)}</p>
                     <div className="flex flex-col items-end gap-1 sm:mt-1 sm:flex-row sm:flex-wrap sm:justify-end">
-                      <StatusBadge
-                        status={o.cancelled_at ? "cancelled" : o.status}
-                        className="text-sm sm:text-base"
-                      />
+                      {!(pay?.status === "rejected") && (
+                        <StatusBadge
+                          status={o.cancelled_at ? "cancelled" : o.status}
+                          className="text-sm sm:text-base"
+                        />
+                      )}
                       {pay && (
                         <StatusBadge
                           status={pay.status}

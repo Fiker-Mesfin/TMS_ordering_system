@@ -439,7 +439,9 @@ function OrdersTab() {
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="font-display text-lg uppercase">{o.order_number}</span>
               <span className="flex gap-1">
-                <StatusBadge status={o.cancelled_at ? "cancelled" : o.status} />
+                {!(pay?.status === "rejected") && (
+                  <StatusBadge status={o.cancelled_at ? "cancelled" : o.status} />
+                )}
                 {pay && <StatusBadge status={pay.status} label={`payment ${pay.status}`} />}
               </span>
             </div>
