@@ -30,6 +30,7 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
   const paymentSubmitted = Boolean(pay?.submitted_at);
   const paymentVerified = pay?.status === "verified";
   const paymentRejected = pay?.status === "rejected";
+  const waiting = pay?.status === "unverified" && Boolean(pay?.submitted_at);
   const latestRefund = [...order.refund_requests].sort((a, b) =>
     b.created_at.localeCompare(a.created_at),
   )[0];
@@ -42,26 +43,28 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
   const deliveryScheduleMessage = `Your burgers are scheduled for delivery on ${formatDeliveryDate(order.delivery_date)} during ${order.meal_slot}.`;
   const progressSteps = order.cancelled_at
     ? [
-        { label: "Order placed", complete: true },
-        { label: "Refund received", complete: true },
-        { label: "Order closed", complete: true },
-      ]
+      { label: "Order placed", complete: true },
+      { label: "Refund received", complete: true },
+      { label: "Order closed", complete: true },
+    ]
     : [
-        { label: "Order placed", complete: true },
-        {
-          label: paymentSubmitted ? "Payment submitted" : "Payment needed",
-          complete: paymentSubmitted,
-        },
-        {
-          label: paymentVerified
-            ? "Payment verified"
-            : paymentRejected
-              ? "Payment rejected"
+      { label: "Order placed", complete: true },
+      {
+        label: paymentSubmitted ? "Payment submitted" : "Payment needed",
+        complete: paymentSubmitted,
+      },
+      {
+        label: paymentVerified
+          ? "Payment verified"
+          : paymentRejected
+            ? "Payment rejected"
+            : waiting
+              ? "Waiting for verification"
               : "Verification",
-          complete: paymentVerified,
-        },
-        { label: "Delivery scheduled", complete: order.status === "confirmed" },
-      ];
+        complete: paymentVerified,
+      },
+      { label: "Delivery scheduled", complete: order.status === "confirmed" },
+    ];
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-4 py-12">
@@ -118,9 +121,11 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
                             : `Your refund is marked sent. Reference: ${latestRefund.refund_reference}. Review its proof below, then choose to close this order or continue with a new payment.`
                       : paymentRejected
                         ? "Your payment needs attention. Review the note below and resubmit your proof, or request a refund if you already transferred the money."
-                        : paymentSubmitted
-                          ? "Payment received — we’re checking it. We’ll confirm the order and delivery schedule once it’s verified."
-                          : "Your order is saved but not confirmed. Complete the bank transfer and submit its reference and proof below to reserve your delivery."}
+                        : waiting
+                          ? "Payment proof received — waiting for verification. You have no other tasks right now, just wait while we verify your transfer."
+                          : paymentSubmitted
+                            ? "Payment received — we’re checking it. We’ll confirm the order and delivery schedule once it’s verified."
+                            : "Your order is saved but not confirmed. Complete the bank transfer and submit its reference and proof below to reserve your delivery."}
           </p>
         </div>
         <ol className="grid gap-3 sm:grid-cols-4">
@@ -248,6 +253,7 @@ function PaymentSection({
   const [ref, setRef] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showResubmit, setShowResubmit] = useState(false);
   const waiting = payment.status === "unverified" && !!payment.submitted_at;
 
   async function submit(e: React.FormEvent): Promise<void> {
@@ -292,27 +298,124 @@ function PaymentSection({
     toast.success("Payment details sent. We'll verify shortly.");
     setRef("");
     setFile(null);
+    setShowResubmit(false);
+  }
+
+  // When payment proof has been submitted, display the "Payment under review" card
+  if (waiting && !showResubmit) {
+    const methodLabel =
+      payment.method === "cbe"
+        ? "Commercial Bank of Ethiopia"
+        : payment.method === "telebirr"
+          ? "Telebirr"
+          : (PAYMENT_ACCOUNTS.find((a) => a.id === payment.method)?.label ?? "Bank Transfer");
+
+    return (
+      <section
+        id="payment"
+        className="space-y-5 rounded-xl border border-border bg-card p-5"
+      >
+        <div>
+          <h2 className="text-3xl">Payment under review</h2>
+          <p className="mt-1 text-base leading-relaxed text-muted-foreground">
+            We've received your payment details and are checking the transaction. Your order will be
+            confirmed once the payment has been verified.
+          </p>
+        </div>
+
+        <div className="border-t border-border/60" />
+
+        <div className="space-y-3">
+          <h3 className="text-2xl">Payment details</h3>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between text-base">
+              <span className="text-muted-foreground">Reference</span>
+              <span className="font-mono font-bold text-foreground">
+                {payment.transaction_ref}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-base">
+              <span className="text-muted-foreground">Payment method</span>
+              <span className="font-semibold text-foreground">{methodLabel}</span>
+            </div>
+            <div className="flex items-center justify-between text-base">
+              <span className="text-muted-foreground">Amount</span>
+              <span className="font-bold text-primary">{formatETB(total)}</span>
+            </div>
+            <div className="flex items-center justify-between text-base">
+              <span className="text-muted-foreground">Submitted</span>
+              <span className="text-muted-foreground">
+                {payment.submitted_at
+                  ? format(new Date(payment.submitted_at), "d MMM yyyy, HH:mm")
+                  : "—"}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="border-t border-border/60 pt-4 space-y-2">
+          <p className="text-base text-muted-foreground">
+            There's nothing else you need to do right now. We'll let you know when your order is
+            confirmed.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setRef(payment.transaction_ref ?? "");
+              setShowResubmit(true);
+            }}
+            className="text-base font-semibold text-primary hover:underline transition-colors block text-left"
+          >
+            Entered the wrong reference? Update payment details →
+          </button>
+        </div>
+      </section>
+    );
   }
 
   return (
-    <section id="payment" className="space-y-5 rounded-xl border border-primary/60 bg-card p-5">
-      <div>
-        <h2 className="text-3xl">Pay by transfer</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Send exactly <strong className="text-foreground">{formatETB(total)}</strong> to one of
-          these accounts. Put <strong className="text-foreground">{orderNumber}</strong> in the
-          transfer reason.
-        </p>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        {PAYMENT_ACCOUNTS.map((a) => (
-          <div key={a.id} className="rounded-lg border border-border bg-muted p-4">
-            <p className="text-sm font-semibold">{a.label}</p>
-            <p className="mt-1 font-mono text-lg">{a.accountNumber}</p>
-            <p className="text-sm text-muted-foreground">{a.accountName}</p>
+    <section id="payment" className="space-y-5 rounded-xl border border-border bg-card p-5">
+      {waiting && showResubmit ? (
+        <div className="flex items-center justify-between border-b border-border/60 pb-3">
+          <div>
+            <h2 className="text-xl font-bold">Update Payment Details</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Current reference:{" "}
+              <span className="font-mono font-medium text-foreground">
+                {payment.transaction_ref}
+              </span>
+            </p>
           </div>
-        ))}
-      </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowResubmit(false)}
+          >
+            Cancel
+          </Button>
+        </div>
+      ) : (
+        <>
+          <div>
+            <h2 className="text-3xl">Pay by transfer</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Send exactly <strong className="text-foreground">{formatETB(total)}</strong> to one of
+              these accounts. Put <strong className="text-foreground">{orderNumber}</strong> in the
+              transfer reason.
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {PAYMENT_ACCOUNTS.map((a) => (
+              <div key={a.id} className="rounded-lg border border-border bg-muted p-4">
+                <p className="text-sm font-semibold">{a.label}</p>
+                <p className="mt-1 font-mono text-lg">{a.accountNumber}</p>
+                <p className="text-sm text-muted-foreground">{a.accountName}</p>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       {payment.status === "rejected" && (
         <p className="rounded-md border border-destructive p-3 text-sm">
@@ -320,17 +423,10 @@ function PaymentSection({
           {payment.review_note ? `: ${payment.review_note}` : "."} Please check and resubmit.
         </p>
       )}
-      {waiting && (
-        <p className="rounded-md border border-border p-3 text-sm text-muted-foreground">
-          We received your reference{" "}
-          <span className="font-mono text-foreground">{payment.transaction_ref}</span>. The owner is
-          checking the bank transaction — your order will be confirmed once verified.
-        </p>
-      )}
 
       <form onSubmit={submit} className="space-y-4">
         <p className="text-sm font-semibold">
-          {waiting ? "Need to correct it? Resubmit:" : "After paying, submit your proof:"}
+          {waiting ? "Submit corrected reference:" : "After paying, submit your proof:"}
         </p>
         <div>
           <p className="mb-2 text-sm font-medium">
@@ -372,9 +468,21 @@ function PaymentSection({
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           />
         </div>
-        <Button className="w-full bg-flame" disabled={busy}>
-          {busy ? "Sending…" : "Submit payment proof"}
-        </Button>
+        <div className="flex gap-2">
+          {waiting && showResubmit && (
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              onClick={() => setShowResubmit(false)}
+            >
+              Cancel
+            </Button>
+          )}
+          <Button className="w-full bg-flame flex-1" disabled={busy}>
+            {busy ? "Sending…" : waiting ? "Update payment proof" : "Submit payment proof"}
+          </Button>
+        </div>
       </form>
     </section>
   );
