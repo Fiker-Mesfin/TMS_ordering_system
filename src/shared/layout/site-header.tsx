@@ -15,7 +15,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { NotificationBell } from "@/shared/layout/NotificationBell";
 
 export function SiteHeader() {
-  const { count } = useCart();
+  const { count, resetActive } = useCart();
   const { user, isAdmin } = useAuth();
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -23,6 +23,7 @@ export function SiteHeader() {
   const { theme, toggle } = useTheme();
 
   async function signOut() {
+    resetActive();
     await qc.cancelQueries();
     qc.clear();
     await signOutUser();
