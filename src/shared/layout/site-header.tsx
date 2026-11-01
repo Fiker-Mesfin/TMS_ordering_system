@@ -36,21 +36,21 @@ export function SiteHeader() {
         <Link to="/" className="font-display text-3xl uppercase tracking-wide text-primary">
           TMS<span className="text-foreground">.</span>
         </Link>
-        <div className="flex items-center gap-0.5 sm:gap-1">
-          <nav aria-label="Main navigation" className="hidden items-center gap-1 sm:flex sm:gap-2">
-            <Button asChild variant="ghost" size="sm">
+        <div className="flex items-center gap-0.5 sm:gap-1.5 lg:gap-2">
+          <nav aria-label="Main navigation" className="hidden items-center gap-2 sm:flex lg:gap-3">
+            <Button asChild variant="ghost" size="sm" className="h-10 px-3 text-base">
               <Link to="/">Menu</Link>
             </Button>
-            <Button asChild variant="ghost" size="sm">
+            <Button asChild variant="ghost" size="sm" className="h-10 px-3 text-base">
               <Link to="/about">About</Link>
             </Button>
             {user && (
-              <Button asChild variant="ghost" size="sm">
+              <Button asChild variant="ghost" size="sm" className="h-10 px-3 text-base">
                 <Link to="/orders">My Orders</Link>
               </Button>
             )}
             {isAdmin && (
-              <Button asChild variant="ghost" size="sm">
+              <Button asChild variant="ghost" size="sm" className="h-10 px-3 text-base">
                 <Link to="/admin">Owner</Link>
               </Button>
             )}
@@ -62,11 +62,19 @@ export function SiteHeader() {
             onClick={toggle}
             aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
             title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            className="sm:h-10 sm:w-10 sm:[&_svg]:size-5"
           >
             {theme === "dark" ? <Sun /> : <Moon />}
           </Button>
           {user ? (
-            <Button variant="ghost" size="icon" onClick={signOut} aria-label="Sign out">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={signOut}
+              aria-label="Sign out"
+              title="Sign out"
+              className="sm:h-10 sm:w-10 sm:[&_svg]:size-5"
+            >
               <LogOut />
             </Button>
           ) : (
@@ -76,8 +84,16 @@ export function SiteHeader() {
               </Link>
             </Button>
           )}
-          <Button asChild size="icon" className="relative sm:h-8 sm:w-auto sm:px-3">
-            <Link to="/cart" aria-label={`Cart, ${count} ${count === 1 ? "item" : "items"}`}>
+          <Button
+            asChild
+            size="icon"
+            className="relative sm:h-10 sm:w-auto sm:px-3 sm:[&_svg]:size-5"
+          >
+            <Link
+              to="/cart"
+              aria-label={`Cart, ${count} ${count === 1 ? "item" : "items"}`}
+              title={`Cart, ${count} ${count === 1 ? "item" : "items"}`}
+            >
               <ShoppingBag />
               <span className="sr-only sm:not-sr-only sm:ml-1">{count}</span>
               {count > 0 && (
@@ -96,6 +112,7 @@ export function SiteHeader() {
                 variant="ghost"
                 size="icon"
                 aria-label="Open navigation menu"
+                title="Open navigation menu"
                 className="sm:hidden"
               >
                 <MenuIcon />

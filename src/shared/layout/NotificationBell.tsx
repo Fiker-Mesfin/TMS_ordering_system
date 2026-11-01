@@ -80,10 +80,11 @@ export function NotificationBell() {
         variant="ghost"
         size="icon"
         aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ""}`}
+        title={`Notifications${unreadCount ? `, ${unreadCount} unread` : ""}`}
         aria-expanded={open}
         aria-controls="notification-panel"
         onClick={() => setOpen((value) => !value)}
-        className="relative"
+        className="relative sm:h-10 sm:w-10 sm:[&_svg]:size-5"
       >
         <Bell />
         {unreadCount > 0 && (
