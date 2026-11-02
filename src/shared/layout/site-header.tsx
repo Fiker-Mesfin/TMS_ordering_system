@@ -39,7 +39,7 @@ export function SiteHeader() {
         <div className="flex items-center gap-0.5 sm:gap-1.5 lg:gap-2">
           <nav aria-label="Main navigation" className="hidden items-center gap-2 sm:flex lg:gap-3">
             <Button asChild variant="ghost" size="sm" className="h-10 px-3 text-base">
-              <Link to="/">Menu</Link>
+              <a href="/#menu">Menu</a>
             </Button>
             <Button asChild variant="ghost" size="sm" className="h-10 px-3 text-base">
               <Link to="/about">About</Link>
@@ -120,7 +120,7 @@ export function SiteHeader() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem asChild>
-                <Link to="/">Menu</Link>
+                <a href="/#menu">Menu</a>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link to="/about">About</Link>

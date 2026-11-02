@@ -48,7 +48,7 @@ export function MenuPage() {
         {isLoading ? (
           <p className="mt-8 text-base text-muted-foreground">Loading…</p>
         ) : (
-          <div className="mt-6 grid gap-4 sm:mt-8 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
+          <div className="mt-6 grid gap-4 sm:mt-8 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 justify-center">
             {items.map((item) => (
               <article
                 key={item.id}

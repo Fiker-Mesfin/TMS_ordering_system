@@ -19,6 +19,12 @@ import {
   usePlaceOrder,
 } from "../hooks/useCheckout";
 
+const MEAL_SLOT_TIMES: Record<string, string> = {
+  breakfast: "1:00 – 2:00 LT",
+  lunch: "6:00 – 6:40 LT",
+  dinner: "11:00 – 12:00 LT",
+};
+
 const schema = z.object({
   contactName: z.string().trim().min(2, "Enter your name").max(100),
   contactPhone: z
@@ -221,7 +227,12 @@ export function CheckoutPage() {
                   className="flex cursor-pointer items-center gap-3 rounded-md border border-border bg-card p-3"
                 >
                   <RadioGroupItem id={`meal-slot-${slot.slot}`} value={slot.slot} />
-                  {slot.label}
+                  <span className="flex flex-col">
+                    <span>{slot.label}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {MEAL_SLOT_TIMES[slot.slot] ?? ""}
+                    </span>
+                  </span>
                 </Label>
               ))}
             </RadioGroup>
@@ -230,6 +241,9 @@ export function CheckoutPage() {
               No meal times are currently accepting orders.
             </p>
           )}
+          <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+            We&rsquo;ll deliver your burger right on time! No long waits, no worrying about when your food will arrive. Just sit back, relax, and enjoy.
+          </p>
         </fieldset>
         <fieldset className="space-y-2">
           <legend className="text-base font-medium leading-snug">
