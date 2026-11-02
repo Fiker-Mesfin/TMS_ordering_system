@@ -48,11 +48,11 @@ export function MenuPage() {
         {isLoading ? (
           <p className="mt-8 text-base text-muted-foreground">Loading…</p>
         ) : (
-          <div className="mt-6 grid gap-4 sm:mt-8 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 justify-center">
+          <div className="mt-6 flex flex-wrap justify-center gap-4 sm:mt-8 sm:gap-6">
             {items.map((item) => (
               <article
                 key={item.id}
-                className="group flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm"
+                className="group flex w-full max-w-xs flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm sm:max-w-sm"
               >
                 <div className="aspect-[4/3] overflow-hidden sm:aspect-square">
                   <MenuPhoto

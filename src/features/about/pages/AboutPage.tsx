@@ -144,7 +144,7 @@ export function AboutPage() {
           ))}
         </ol>
         <p className="mt-5 rounded-lg border border-primary/30 bg-primary/5 p-4 text-base leading-relaxed text-foreground">
-          <strong>Important:</strong> placing an order does not confirm it. Your order is confirmed
+          <strong>Important:</strong> Placing an order does not confirm it. Your order is confirmed
           only after your payment has been verified.
         </p>
       </section>
