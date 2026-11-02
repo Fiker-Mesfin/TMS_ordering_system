@@ -478,8 +478,28 @@ export type Database = {
         Args: Record<PropertyKey, never>;
         Returns: { delivery_date: string; is_open: boolean }[];
       };
+      get_admin_delivery_schedule: {
+        Args: Record<PropertyKey, never>;
+        Returns: { delivery_date: string; is_open: boolean }[];
+      };
+      get_order_reschedule_options: {
+        Args: { _order_id: string };
+        Returns: {
+          can_reschedule: boolean;
+          delivery_date: string | null;
+          is_open: boolean;
+        }[];
+      };
       set_delivery_date_open: {
         Args: { _delivery_date: string; _is_open: boolean };
+        Returns: undefined;
+      };
+      reschedule_order_delivery: {
+        Args: { _delivery_date: string; _order_id: string };
+        Returns: undefined;
+      };
+      cancel_unpaid_order: {
+        Args: { _order_id: string };
         Returns: undefined;
       };
       request_payment_refund: {

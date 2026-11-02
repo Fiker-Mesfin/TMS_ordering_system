@@ -12,9 +12,9 @@ export const Route = createFileRoute("/auth")({
   }),
   head: () => ({
     meta: [
-      { title: "Sign in — TMS Burgers" },
-      { name: "description", content: "Sign in or create an account to place your TMS order." },
-      { property: "og:title", content: "Sign in — TMS Burgers" },
+      { title: "Sign in — TM's Burgers" },
+      { name: "description", content: "Sign in or create an account to place your TM's order." },
+      { property: "og:title", content: "Sign in — TM's Burgers" },
       { property: "og:description", content: "Sign in to check out." },
     ],
   }),

@@ -1,39 +1,35 @@
 import { useState, type FormEvent } from "react";
-import { Loader2, Plus, Upload } from "lucide-react";
+import { Loader2, Pencil, Plus, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/shared/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { Input } from "@/shared/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { Switch } from "@/shared/ui/switch";
 import { Textarea } from "@/shared/ui/textarea";
 import { RequiredMark } from "@/shared/ui/required-mark";
-import { useCreateMenuItem } from "../hooks/useAdminData";
+import { useCreateMenuItem, useUpdateMenuItem } from "../hooks/useAdminData";
 import { menuFormSchema } from "@/lib/menu-form";
-import { menuImage } from "@/lib/shop";
+import { MenuPhoto } from "@/shared/menu/MenuPhoto";
+import type { MenuItem } from "@/types/menu";
 
-const defaultImageKey = "classic";
-const imageKeys = ["classic", "double", "berbere", "chicken", "veggie"];
-
-export function OwnerMenuForm() {
+export function OwnerMenuForm({ item }: { item?: MenuItem }) {
   const createMenuItem = useCreateMenuItem();
+  const updateMenuItem = useUpdateMenuItem();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [available, setAvailable] = useState(true);
-  const [imageKey, setImageKey] = useState(defaultImageKey);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState("");
-  const busy = createMenuItem.isPending;
+  const busy = createMenuItem.isPending || updateMenuItem.isPending;
 
-  function resetForm() {
-    setName("");
-    setDescription("");
-    setPrice("");
-    setAvailable(true);
-    setImageKey(defaultImageKey);
+  function populateForm() {
+    setName(item?.name ?? "");
+    setDescription(item?.description ?? "");
+    setPrice(item ? String(item.price) : "");
+    setAvailable(item?.available ?? true);
     setFile(null);
     setPreview(null);
     setError("");
@@ -49,12 +45,30 @@ export function OwnerMenuForm() {
       return;
     }
 
+    if (!item && !file) {
+      setError("Choose a burger picture");
+      return;
+    }
+
     setError("");
     try {
-      await createMenuItem.mutateAsync({ ...result.data, imageFile: file, imageKey });
-      toast.success(`${result.data.name} added to the menu`);
+      if (item) {
+        await updateMenuItem.mutateAsync({
+          id: item.id,
+          values: {
+            ...result.data,
+            imageFile: file,
+          },
+          currentImageKey: item.image_key,
+        });
+        toast.success(`${result.data.name} updated`);
+      } else {
+        if (!file) throw new Error("Choose a burger picture");
+        await createMenuItem.mutateAsync({ ...result.data, imageFile: file });
+        toast.success(`${result.data.name} added to the menu`);
+      }
       setOpen(false);
-      resetForm();
+      populateForm();
     } catch (saveError) {
       setError(
         saveError instanceof Error
@@ -93,19 +107,33 @@ export function OwnerMenuForm() {
 
   return (
     <>
-      <Button onClick={() => setOpen(true)}>
-        <Plus />
-        Add burger
+      <Button
+        type="button"
+        variant={item ? "ghost" : "default"}
+        size={item ? "icon" : "default"}
+        aria-label={item ? `Edit ${item.name}` : undefined}
+        onClick={() => {
+          populateForm();
+          setOpen(true);
+        }}
+      >
+        {item ? <Pencil /> : <Plus />}
+        {!item && "Add burger"}
       </Button>
       <Dialog
         open={open}
         onOpenChange={(value) => {
-          if (!busy) setOpen(value);
+          if (!busy) {
+            if (value) populateForm();
+            setOpen(value);
+          }
         }}
       >
         <DialogContent className="max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="font-display text-3xl">Add burger</DialogTitle>
+            <DialogTitle className="font-display text-3xl">
+              {item ? "Edit burger" : "Add burger"}
+            </DialogTitle>
           </DialogHeader>
           <form onSubmit={save} className="space-y-4">
             <fieldset disabled={busy} className="space-y-4">
@@ -147,41 +175,43 @@ export function OwnerMenuForm() {
                 />
               </div>
               <div className="flex items-center gap-4">
-                <img
-                  src={preview ?? menuImage(imageKey)}
-                  alt="Burger picture preview"
-                  className="h-24 w-24 shrink-0 rounded-md object-cover"
-                  width={96}
-                  height={96}
-                />
+                {preview ? (
+                  <img
+                    src={preview}
+                    alt="Burger picture preview"
+                    className="h-24 w-24 shrink-0 rounded-md object-cover"
+                    width={96}
+                    height={96}
+                  />
+                ) : item ? (
+                  <MenuPhoto
+                    imageKey={item.image_key}
+                    alt="Current burger picture"
+                    className="h-24 w-24 shrink-0 rounded-md object-cover"
+                    width={96}
+                    height={96}
+                  />
+                ) : (
+                  <div className="flex h-24 w-24 shrink-0 flex-col items-center justify-center gap-1 rounded-md border border-dashed border-border text-center text-xs text-muted-foreground">
+                    <Upload className="h-5 w-5" />
+                    Upload photo
+                  </div>
+                )}
                 <div className="min-w-0 flex-1 space-y-2">
                   <label
                     htmlFor="burger-photo"
                     className="flex items-center gap-2 text-sm font-semibold"
                   >
                     <Upload className="h-4 w-4" />
-                    Picture
+                    Picture {!item && <RequiredMark />}
                   </label>
                   <Input
                     id="burger-photo"
                     type="file"
                     accept="image/jpeg,image/png,image/webp"
                     onChange={(event) => chooseFile(event.target.files?.[0], event.currentTarget)}
+                    required={!item}
                   />
-                  {!file && (
-                    <Select value={imageKey} onValueChange={setImageKey}>
-                      <SelectTrigger aria-label="Existing burger picture">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {imageKeys.map((key) => (
-                          <SelectItem key={key} value={key}>
-                            {key.charAt(0).toUpperCase() + key.slice(1)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
                 </div>
               </div>
               <div className="flex items-center justify-between">
@@ -206,8 +236,8 @@ export function OwnerMenuForm() {
                 Cancel
               </Button>
               <Button type="submit" disabled={busy}>
-                {busy ? <Loader2 className="animate-spin" /> : <Plus />}
-                {busy ? "Saving…" : "Save burger"}
+                {busy ? <Loader2 className="animate-spin" /> : item ? <Pencil /> : <Plus />}
+                {busy ? "Saving…" : item ? "Save changes" : "Save burger"}
               </Button>
             </DialogFooter>
           </form>

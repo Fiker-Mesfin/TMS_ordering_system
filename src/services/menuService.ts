@@ -2,7 +2,11 @@ import { supabase } from "@/integrations/supabase/client";
 import type { MenuExtra, MenuItem } from "@/types/menu";
 
 export async function getMenuItems(): Promise<MenuItem[]> {
-  const { data, error } = await supabase.from("menu_items").select("*").order("sort_order");
+  const { data, error } = await supabase
+    .from("menu_items")
+    .select("*")
+    .order("sort_order")
+    .order("created_at");
   if (error) throw error;
   return data as MenuItem[];
 }

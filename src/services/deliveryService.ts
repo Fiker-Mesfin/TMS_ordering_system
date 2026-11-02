@@ -7,6 +7,12 @@ export async function getDeliverySchedule(): Promise<DeliveryDay[]> {
   return data;
 }
 
+export async function getAdminDeliverySchedule(): Promise<DeliveryDay[]> {
+  const { data, error } = await supabase.rpc("get_admin_delivery_schedule");
+  if (error) throw error;
+  return data;
+}
+
 export async function getMealSlots(): Promise<MealSlot[]> {
   const { data, error } = await supabase
     .from("meal_slots")

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Search, X, RotateCcw } from "lucide-react";
+import { Download, FileSpreadsheet, RotateCcw, Search, X } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -26,6 +26,8 @@ import {
   uploadRefundProof,
 } from "@/services/refundService";
 import { OwnerMenuForm } from "../components/OwnerMenuForm";
+import { downloadAdminOrdersXlsx } from "../components/adminOrdersExport";
+import type { MenuItem } from "@/types/menu";
 import {
   useAdminCatalog,
   useAdminOrderingAvailability,
@@ -815,7 +817,8 @@ function OrderingTab() {
       <section className="rounded-xl border border-border bg-card p-4">
         <h2 className="text-2xl">Delivery dates</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Customers can order for today or tomorrow until you close that date.
+          Customers can choose the next two weekdays. Close dates here to pause orders; manage
+          availability up to five business days ahead.
         </p>
         {schedule.isLoading ? (
           <p className="mt-3 text-sm text-muted-foreground">Loading delivery dates…</p>
@@ -896,15 +899,23 @@ function MenuTab() {
         <OwnerMenuForm />
       </div>
       <div className="grid gap-6 md:grid-cols-3">
-        <ToggleList
-          title="Burgers"
-          rows={items.map((i) => ({
-            id: i.id,
-            label: `${i.name} · ${formatETB(i.price)}`,
-            on: i.available,
-          }))}
-          onToggle={(id, v) => toggle("menu_items", id, v)}
-        />
+        {itemsQuery.isError ? (
+          <p role="alert" className="text-sm text-destructive">
+            Couldn't load burgers:{" "}
+            {itemsQuery.error instanceof Error ? itemsQuery.error.message : "Please try again."}
+          </p>
+        ) : (
+          <ToggleList
+            title="Burgers"
+            rows={items.map((i) => ({
+              id: i.id,
+              label: `${i.name} · ${formatETB(i.price)}`,
+              on: i.available,
+              item: i,
+            }))}
+            onToggle={(id, v) => toggle("menu_items", id, v)}
+          />
+        )}
         <ToggleList
           title="Extras"
           rows={extras.map((i) => ({
@@ -930,7 +941,7 @@ function ToggleList({
   onToggle,
 }: {
   title: string;
-  rows: { id: string; label: string; on: boolean }[];
+  rows: { id: string; label: string; on: boolean; item?: MenuItem }[];
   onToggle: (id: string, v: boolean) => void;
 }) {
   return (
@@ -939,8 +950,11 @@ function ToggleList({
       <ul className="mt-3 space-y-2">
         {rows.map((r) => (
           <li key={r.id} className="flex items-center justify-between gap-2 text-sm">
-            <span>{r.label}</span>
-            <Switch checked={r.on} onCheckedChange={(v) => onToggle(r.id, v)} />
+            <span className="min-w-0 flex-1">{r.label}</span>
+            <div className="flex shrink-0 items-center gap-1">
+              {r.item && <OwnerMenuForm item={r.item} />}
+              <Switch checked={r.on} onCheckedChange={(v) => onToggle(r.id, v)} />
+            </div>
           </li>
         ))}
       </ul>

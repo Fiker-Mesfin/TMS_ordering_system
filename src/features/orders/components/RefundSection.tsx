@@ -140,8 +140,8 @@ export function RefundSection({
             <>
               <p className="text-muted-foreground">
                 {latest.admin_note || "The refund request was declined."} Contact us at{" "}
-                <a className="font-semibold text-primary underline" href="tel:0988241287">
-                  0988241287
+                <a className="font-semibold text-primary underline" href="tel:0909841353">
+                  0909841353
                 </a>{" "}
                 if you need help. You may submit another request.
               </p>

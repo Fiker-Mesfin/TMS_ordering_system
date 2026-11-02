@@ -9,12 +9,26 @@ import { RadioGroup, RadioGroupItem } from "@/shared/ui/radio-group";
 import { RequiredMark } from "@/shared/ui/required-mark";
 import { StatusBadge } from "@/shared/feedback/status-badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/shared/ui/alert-dialog";
 import { formatDeliveryDate } from "@/lib/delivery";
 import { useAuth } from "@/lib/auth";
 import { formatETB, PAYMENT_ACCOUNTS } from "@/lib/shop";
 import type { Tables } from "@/integrations/supabase/types";
 import {
   useOrderDetails,
+  useOrderRescheduleOptions,
+  useRescheduleOrder,
+  useCancelUnpaidOrder,
   useSubmitPaymentProof,
   useUploadPaymentReceipt,
 } from "../hooks/useOrders";
@@ -46,8 +60,9 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
   const progressSteps = order.cancelled_at
     ? [
       { label: "Order placed", complete: true },
-      { label: "Refund received", complete: true },
-      { label: "Order closed", complete: true },
+      ...(paymentSubmitted
+        ? [{ label: "Refund received", complete: true }]
+        : [{ label: "Order cancelled", complete: true }]),
     ]
     : [
       { label: "Order placed", complete: true },
@@ -152,6 +167,13 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
         </ol>
       </section>
 
+      {!order.cancelled_at &&
+        (paymentVerified ? (
+          <OrderDeliveryDateEditor orderId={order.id} />
+        ) : !paymentSubmitted ? (
+          <CancelOrderAction orderId={order.id} />
+        ) : null)}
+
       <section className="rounded-xl border border-border bg-card p-5">
         <ul className="space-y-2 text-base">
           {order.order_items.map((it) => (
@@ -195,9 +217,11 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
         <>
           {order.cancelled_at && (
             <section className="rounded-xl border border-border bg-card p-5">
-              <p className="font-display text-2xl uppercase">Order closed</p>
+              <p className="font-display text-2xl uppercase">Order cancelled</p>
               <p className="mt-1 text-base leading-relaxed text-muted-foreground">
-                This order was closed after you confirmed receiving the refund.
+                {paymentSubmitted
+                  ? "This order was closed after you confirmed receiving the refund."
+                  : "This order was cancelled before payment proof was submitted."}
               </p>
               <Link
                 to="/"
@@ -240,6 +264,145 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
         </>
       )}
     </div>
+  );
+}
+
+function CancelOrderAction({ orderId }: { orderId: string }) {
+  const cancelOrder = useCancelUnpaidOrder(orderId);
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  async function confirmCancellation() {
+    try {
+      await cancelOrder.mutateAsync();
+      setDialogOpen(false);
+      toast.success("Order cancelled");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not cancel this order");
+    }
+  }
+
+  return (
+    <section className="space-y-3 rounded-xl border border-border bg-card p-5">
+      <div>
+        <h2 className="text-2xl">Cancel this order?</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          You can cancel before submitting payment proof. If you have already transferred money,
+          contact us instead so we can help with your payment.
+        </p>
+      </div>
+      <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <AlertDialogTrigger asChild>
+          <Button type="button" variant="destructive" disabled={cancelOrder.isPending}>
+            Cancel order
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel this order?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This cannot be undone. You can place a new order from the menu later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={cancelOrder.isPending}>Keep order</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={cancelOrder.isPending}
+              onClick={(event) => {
+                event.preventDefault();
+                void confirmCancellation();
+              }}
+            >
+              {cancelOrder.isPending ? "Cancelling…" : "Yes, cancel order"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </section>
+  );
+}
+
+function OrderDeliveryDateEditor({ orderId }: { orderId: string }) {
+  const { data: options, isLoading, error } = useOrderRescheduleOptions(orderId);
+  const reschedule = useRescheduleOrder(orderId);
+  const [selectedDate, setSelectedDate] = useState("");
+  const canReschedule = options?.[0]?.can_reschedule ?? false;
+  const datedOptions = options?.filter(
+    (option): option is typeof option & { delivery_date: string } =>
+      option.delivery_date !== null,
+  );
+
+  async function saveDate() {
+    if (!selectedDate || reschedule.isPending) return;
+    try {
+      await reschedule.mutateAsync(selectedDate);
+      toast.success(`Delivery moved to ${formatDeliveryDate(selectedDate)}`);
+      setSelectedDate("");
+    } catch (saveError) {
+      toast.error(
+        saveError instanceof Error ? saveError.message : "Could not change delivery date",
+      );
+    }
+  }
+
+  return (
+    <section className="space-y-3 rounded-xl border border-border bg-card p-5">
+      <div>
+        <h2 className="text-2xl">Change delivery date</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Move delivery forward by up to two weekdays. Changes close at 11:00 LT on the day before
+          your scheduled delivery.
+        </p>
+      </div>
+      {isLoading ? (
+        <p className="text-sm text-muted-foreground">Checking available dates…</p>
+      ) : error ? (
+        <p role="alert" className="text-sm text-destructive">
+          Could not load delivery date options: {error.message}
+        </p>
+      ) : !canReschedule ? (
+        <p className="text-sm text-muted-foreground">
+          The change window has closed, or this order is no longer active.
+        </p>
+      ) : datedOptions && datedOptions.length > 0 ? (
+        <>
+          <RadioGroup
+            value={selectedDate}
+            onValueChange={setSelectedDate}
+            aria-label="New delivery date"
+            className="space-y-2"
+          >
+            {datedOptions.map((option) => (
+              <Label
+                key={option.delivery_date}
+                htmlFor={`reschedule-date-${option.delivery_date}`}
+                className={`flex items-center gap-3 rounded-md border border-border p-3 ${
+                  option.is_open ? "cursor-pointer" : "cursor-not-allowed opacity-60"
+                }`}
+              >
+                <RadioGroupItem
+                  id={`reschedule-date-${option.delivery_date}`}
+                  value={option.delivery_date}
+                  disabled={!option.is_open}
+                />
+                <span>{formatDeliveryDate(option.delivery_date)}</span>
+                {!option.is_open && (
+                  <span className="ml-auto text-sm text-muted-foreground">Closed</span>
+                )}
+              </Label>
+            ))}
+          </RadioGroup>
+          <Button
+            type="button"
+            disabled={!selectedDate || reschedule.isPending}
+            onClick={() => void saveDate()}
+          >
+            {reschedule.isPending ? "Updating…" : "Update delivery date"}
+          </Button>
+        </>
+      ) : (
+        <p className="text-sm text-muted-foreground">No future weekdays are available to choose.</p>
+      )}
+    </section>
   );
 }
 

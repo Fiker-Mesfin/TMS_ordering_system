@@ -1,4 +1,4 @@
-# TMS Burger
+# TM's Burger
 
 A campus burger ordering web app for Addis Ababa University (AAU), built with
 React, TanStack Start/Router, Tailwind CSS, and Supabase.
@@ -66,6 +66,18 @@ SQL Editor:
    customer report a missing transfer for investigation or confirm receipt and
    either continue the same order with a new payment or close it and reorder.
    Apply this migration after `0005_refund_requests.sql`.
+8. `0007_business_day_delivery.sql` — limits delivery scheduling to weekdays
+   and adds business-day availability, validation, and rescheduling rules.
+9. `0008_delivery_schedule_ambiguity.sql` — fixes ambiguous `delivery_date`
+   references when loading customer/admin delivery schedules and rescheduling
+   options. Apply this after `0007_business_day_delivery.sql`.
+10. `0009_cancel_unpaid_order.sql` — lets customers cancel orders before payment
+    proof is submitted.
+11. `0010_burger_sauce_extras.sql` — adds burger sauce and ketchup as menu extras.
+12. `0011_aau_delivery_areas.sql` — adds AAU FBE and AAU Yared Music School as
+    delivery areas.
+13. `0012_update_brand_name.sql` — updates the seeded menu item to use the TM's
+    brand name.
 
 The first account created after applying the core migration is assigned the
 admin role by the database trigger. Sign in with that account to manage the
@@ -85,8 +97,11 @@ callback URL shown in Supabase's Google-provider settings.
 - Browse the burger menu and extras; add configured items to a session-persistent
   cart.
 - Create an account, sign in with email or Google, and view personal orders.
-- Place a preorder for today or tomorrow when the date and selected meal period
-  are open.
+- Place a preorder for one of the next two weekdays when the date and selected
+  meal period are open; weekend deliveries are not available. Admins can close
+  delivery dates manually.
+- Reschedule an active order forward by up to two weekdays before 11:00 LT on
+  the day before its scheduled delivery.
 - Choose an AAU delivery area and submit payment details and optional receipt
   for bank transfer.
 - Follow order and payment progress, including verification, rejection notes,
@@ -98,7 +113,8 @@ callback URL shown in Supabase's Google-provider settings.
   Admins receive in-app notifications when payment proof or refund requests
   need review.
 - Use the owner area to manage the menu, delivery areas, meal/date availability,
-  and payment reviews.
+  and payment reviews. Filter orders by delivery date, burger, campus, meal
+  time, and payment status, then export matching orders to Excel.
 - Switch between dark and light themes; browse the About page.
 
 Payment account information displayed to customers is configured in

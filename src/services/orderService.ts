@@ -1,5 +1,11 @@
 import { supabase } from "@/integrations/supabase/client";
 
+export type OrderRescheduleOption = {
+  can_reschedule: boolean;
+  delivery_date: string | null;
+  is_open: boolean;
+};
+
 export async function getMyOrders(userId: string) {
   const { data, error } = await supabase
     .from("orders")
@@ -10,6 +16,29 @@ export async function getMyOrders(userId: string) {
     .order("created_at", { ascending: false });
   if (error) throw error;
   return data;
+}
+
+export async function getOrderRescheduleOptions(orderId: string): Promise<OrderRescheduleOption[]> {
+  const { data, error } = await supabase.rpc("get_order_reschedule_options", {
+    _order_id: orderId,
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function rescheduleOrderDelivery(input: { orderId: string; deliveryDate: string }) {
+  const { error } = await supabase.rpc("reschedule_order_delivery", {
+    _order_id: input.orderId,
+    _delivery_date: input.deliveryDate,
+  });
+  if (error) throw error;
+}
+
+export async function cancelUnpaidOrder(orderId: string) {
+  const { error } = await supabase.rpc("cancel_unpaid_order", {
+    _order_id: orderId,
+  });
+  if (error) throw error;
 }
 
 export async function getOrderDetails(orderId: string) {
