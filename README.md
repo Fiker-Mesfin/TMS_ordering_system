@@ -82,6 +82,13 @@ SQL Editor:
     reference is submitted, preserves reminders, and automatically cancels
     unpaid orders after their delivery period ends. This uses `pg_cron` to check
     every five minutes and sends the customer an in-app cancellation notice.
+15. `0014_legacy_payment_references.sql` — recognizes saved payment references
+    from before submission timestamps were recorded, including for owner review,
+    customer order status, reminders, and unpaid-order expiry.
+16. `0015_confirm_external_payment.sql` — lets an owner confirm a payment
+    verified outside the app when no payment reference was submitted.
+17. `0016_reconcile_confirmed_external_payment.sql` — lets an owner reconcile an
+    already-confirmed order whose payment record is still unverified.
 
 The first account created after applying the core migration is assigned the
 admin role by the database trigger. Sign in with that account to manage the

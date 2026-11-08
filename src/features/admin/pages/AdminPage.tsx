@@ -7,7 +7,19 @@ import { Input } from "@/shared/ui/input";
 import { Switch } from "@/shared/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import { StatusBadge } from "@/shared/feedback/status-badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/shared/ui/alert-dialog";
 import { formatDeliveryDate } from "@/lib/delivery";
+import { hasSubmittedPaymentReference, isAwaitingPaymentDetails } from "@/lib/payment";
 import { useAuth } from "@/lib/auth";
 import { formatETB } from "@/lib/shop";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
@@ -32,6 +44,7 @@ import {
   useAdminPayments,
   useAdminRefundRequests,
   useCompletePaymentRefund,
+  useConfirmExternalPayment,
   useReceiptUrl,
   useReviewPayment,
   useReviewRefundRequest,
@@ -83,10 +96,10 @@ export function AdminPage() {
 }
 
 function PaymentsTab() {
-  const { data = [], isLoading, isError, error } = useAdminPayments();
+  const { data = [], isLoading, isFetching, isError, error, refetch } = useAdminPayments();
   const createReceiptUrl = useReceiptUrl();
   const submittedPayments = data.filter(hasSubmittedReference);
-  const awaitingPayments = data.filter((payment) => !hasSubmittedReference(payment));
+  const awaitingPayments = data.filter(isAwaitingPaymentDetails);
 
   async function openReceipt(path: string) {
     try {
@@ -106,31 +119,45 @@ function PaymentsTab() {
     );
 
   return (
-    <div className="mt-6 grid gap-6 lg:grid-cols-2">
-      <section>
-        <h2 className="text-2xl">Submitted references ({submittedPayments.length})</h2>
-        {submittedPayments.length === 0 ? (
-          <p className="mt-3 text-muted-foreground">No submitted references need review.</p>
-        ) : (
-          <ul className="mt-3 space-y-3">
-            {submittedPayments.map((payment) => (
-              <PaymentRow key={payment.id} p={payment} onReceipt={openReceipt} />
-            ))}
-          </ul>
-        )}
-      </section>
-      <section>
-        <h2 className="text-2xl">Awaiting customer payment details ({awaitingPayments.length})</h2>
-        {awaitingPayments.length === 0 ? (
-          <p className="mt-3 text-muted-foreground">No orders are waiting for payment details.</p>
-        ) : (
-          <ul className="mt-3 space-y-3">
-            {awaitingPayments.map((payment) => (
-              <UnsubmittedPaymentRow key={payment.id} p={payment} />
-            ))}
-          </ul>
-        )}
-      </section>
+    <div className="mt-6">
+      <div className="mb-4 flex justify-end">
+        <Button
+          type="button"
+          variant="outline"
+          disabled={isFetching}
+          onClick={() => void refetch()}
+        >
+          {isFetching ? "Refreshing…" : "Refresh payment status"}
+        </Button>
+      </div>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <section>
+          <h2 className="text-2xl">Submitted references ({submittedPayments.length})</h2>
+          {submittedPayments.length === 0 ? (
+            <p className="mt-3 text-muted-foreground">No submitted references need review.</p>
+          ) : (
+            <ul className="mt-3 space-y-3">
+              {submittedPayments.map((payment) => (
+                <PaymentRow key={payment.id} p={payment} onReceipt={openReceipt} />
+              ))}
+            </ul>
+          )}
+        </section>
+        <section>
+          <h2 className="text-2xl">
+            Awaiting customer payment details ({awaitingPayments.length})
+          </h2>
+          {awaitingPayments.length === 0 ? (
+            <p className="mt-3 text-muted-foreground">No orders are waiting for payment details.</p>
+          ) : (
+            <ul className="mt-3 space-y-3">
+              {awaitingPayments.map((payment) => (
+                <UnsubmittedPaymentRow key={payment.id} p={payment} />
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
     </div>
   );
 }
@@ -143,6 +170,7 @@ type PayRow = {
   receipt_path: string | null;
   submitted_at: string | null;
   orders: {
+    id: string;
     order_number: string;
     contact_name: string;
     contact_phone: string;
@@ -152,20 +180,20 @@ type PayRow = {
     delivery_date: string;
     meal_slot: string;
     created_at: string;
+    status: string;
+    cancelled_at: string | null;
   } | null;
 };
 
-function hasSubmittedReference(
-  payment: PayRow,
-): payment is PayRow & { submitted_at: string; transaction_ref: string } {
-  return Boolean(payment.submitted_at && payment.transaction_ref?.trim());
+function hasSubmittedReference(payment: PayRow): payment is PayRow & { transaction_ref: string } {
+  return hasSubmittedPaymentReference(payment.transaction_ref);
 }
 
 function PaymentRow({
   p,
   onReceipt,
 }: {
-  p: PayRow & { submitted_at: string; transaction_ref: string };
+  p: PayRow & { transaction_ref: string };
   onReceipt: (path: string) => void;
 }) {
   const [note, setNote] = useState("");
@@ -184,30 +212,32 @@ function PaymentRow({
       <div className="flex flex-wrap justify-between gap-3">
         <div>
           <p className="font-display text-xl uppercase">{p.orders?.order_number}</p>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-base text-muted-foreground">
             {p.orders?.contact_name} · {p.orders?.contact_phone} · {p.orders?.delivery_area_name}
           </p>
           {p.orders && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-base text-muted-foreground">
               Delivery: {formatDeliveryDate(p.orders.delivery_date)} · {p.orders.meal_slot} ·{" "}
               {p.orders.address}
             </p>
           )}
           {p.orders?.notes && (
-            <p className="mt-1 text-sm">
+            <p className="mt-1 text-base">
               <span className="text-muted-foreground">Customer notes:</span> {p.orders.notes}
             </p>
           )}
         </div>
-        <p className="text-lg font-semibold text-primary">{formatETB(p.amount)}</p>
+        <p className="text-xl font-semibold text-primary">{formatETB(p.amount)}</p>
       </div>
-      <div className="mt-3 text-sm">
+      <div className="mt-3 text-base">
         <p>
           <span className="text-muted-foreground">Method:</span> {p.method?.toUpperCase()} ·{" "}
           <span className="text-muted-foreground">Ref:</span>{" "}
-          <span className="font-mono">{p.transaction_ref}</span> ·{" "}
+          <span className="font-mono">{p.transaction_ref || "Reference not returned"}</span> ·{" "}
           <span className="text-muted-foreground">
-            {format(new Date(p.submitted_at), "d MMM HH:mm")}
+            {p.submitted_at
+              ? format(new Date(p.submitted_at), "d MMM HH:mm")
+              : "submission date unavailable"}
           </span>
         </p>
         {p.receipt_path && (
@@ -238,29 +268,93 @@ function PaymentRow({
 }
 
 function UnsubmittedPaymentRow({ p }: { p: PayRow }) {
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const confirmPayment = useConfirmExternalPayment();
+
+  async function markAsPaid() {
+    if (!p.orders) return;
+    try {
+      await confirmPayment.mutateAsync(p.orders.id);
+      setDialogOpen(false);
+      toast.success(
+        p.orders.status === "confirmed"
+          ? `${p.orders.order_number} payment status synced`
+          : `${p.orders.order_number} marked paid and confirmed`,
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not confirm external payment");
+    }
+  }
+
   return (
     <li className="rounded-xl border border-border bg-card p-4">
       <div className="flex flex-wrap justify-between gap-3">
         <div>
           <p className="font-display text-xl uppercase">{p.orders?.order_number}</p>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-base text-muted-foreground">
             {p.orders?.contact_name} · {p.orders?.contact_phone} · {p.orders?.delivery_area_name}
           </p>
           {p.orders && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-base text-muted-foreground">
               Delivery: {formatDeliveryDate(p.orders.delivery_date)} · {p.orders.meal_slot} ·{" "}
               {p.orders.address}
             </p>
           )}
           {p.orders?.notes && (
-            <p className="mt-1 text-sm">
+            <p className="mt-1 text-base">
               <span className="text-muted-foreground">Customer notes:</span> {p.orders.notes}
             </p>
           )}
         </div>
-        <p className="text-lg font-semibold text-primary">{formatETB(p.amount)}</p>
+        <p className="text-xl font-semibold text-primary">{formatETB(p.amount)}</p>
       </div>
-      <p className="mt-3 text-sm text-muted-foreground">No payment reference has been submitted.</p>
+      <p className="mt-3 text-base text-muted-foreground">
+        {p.orders?.cancelled_at
+          ? "This order is cancelled and cannot be confirmed."
+          : p.orders?.status === "confirmed"
+            ? "This order is already confirmed; sync its payment status after checking the transfer was received."
+            : "Waiting for the customer to submit their payment reference. Transfers made outside the app are not visible until submitted."}
+      </p>
+      <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <AlertDialogTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={confirmPayment.isPending || !p.orders || Boolean(p.orders.cancelled_at)}
+            className="mt-3"
+          >
+            {p.orders?.status === "confirmed" ? "Sync payment status" : "Mark paid & confirm"}
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm payment received?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Only continue after you have independently verified the transfer. This will{" "}
+              {p.orders?.status === "confirmed"
+                ? `sync the payment status for ${p.orders?.order_number}`
+                : `mark ${p.orders?.order_number} as paid, confirm the order, and notify the customer`}
+              . No payment reference will be recorded.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={confirmPayment.isPending}>Go back</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={confirmPayment.isPending}
+              onClick={(event) => {
+                event.preventDefault();
+                void markAsPaid();
+              }}
+            >
+              {confirmPayment.isPending
+                ? "Confirming…"
+                : p.orders?.status === "confirmed"
+                  ? "Yes, sync payment status"
+                  : "Yes, I verified the transfer"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </li>
   );
 }
@@ -378,16 +472,16 @@ function RefundRequestRow({ request }: { request: RefundAdminRow }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="font-display text-xl uppercase">{request.orders?.order_number}</p>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-base text-muted-foreground">
             {request.orders?.contact_name} · {request.orders?.contact_phone} ·{" "}
             {request.orders?.delivery_area_name}
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="mt-1 text-base text-muted-foreground">
             Requested {format(new Date(request.created_at), "d MMM yyyy, HH:mm")} ·{" "}
             {request.method.toUpperCase()} · Account {request.account_number}
           </p>
           {request.payments?.transaction_ref && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-base text-muted-foreground">
               Original payment ref:{" "}
               <span className="font-mono">{request.payments.transaction_ref}</span>
             </p>
@@ -395,11 +489,11 @@ function RefundRequestRow({ request }: { request: RefundAdminRow }) {
         </div>
         <div className="text-right">
           <StatusBadge status={request.status} label={`refund ${request.status}`} />
-          <p className="mt-1 font-semibold text-primary">{formatETB(request.amount)}</p>
+          <p className="mt-1 text-xl font-semibold text-primary">{formatETB(request.amount)}</p>
         </div>
       </div>
       {request.reason && (
-        <p className="text-sm">
+        <p className="text-base">
           <span className="text-muted-foreground">Customer reason:</span> {request.reason}
         </p>
       )}
@@ -429,7 +523,7 @@ function RefundRequestRow({ request }: { request: RefundAdminRow }) {
 
       {request.status === "approved" && (
         <form onSubmit={markAsRefunded} className="space-y-3 border-t border-border pt-3">
-          <p className="text-sm font-semibold">
+          <p className="text-base font-semibold">
             After sending the transfer manually, record it here:
           </p>
           <Input
@@ -447,7 +541,7 @@ function RefundRequestRow({ request }: { request: RefundAdminRow }) {
             onChange={(event) => setProof(event.target.files?.[0] ?? null)}
             aria-label="Refund transfer proof"
           />
-          <label className="flex items-start gap-2 text-sm">
+          <label className="flex items-start gap-2 text-base">
             <input
               type="checkbox"
               checked={transferred}
@@ -463,7 +557,7 @@ function RefundRequestRow({ request }: { request: RefundAdminRow }) {
       )}
 
       {request.status === "refunded" && (
-        <div className="space-y-2 border-t border-border pt-3 text-sm">
+        <div className="space-y-2 border-t border-border pt-3 text-base">
           <p>
             Refund ref: <span className="font-mono">{request.refund_reference}</span>
           </p>
@@ -481,7 +575,7 @@ function RefundRequestRow({ request }: { request: RefundAdminRow }) {
             <div className="rounded-md border border-warning/50 bg-warning/10 p-3">
               <p className="font-semibold">Customer says refund has not arrived</p>
               {request.follow_up_note && <p className="mt-1">{request.follow_up_note}</p>}
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="mt-1 text-base text-muted-foreground">
                 Investigate the existing transfer. Do not send another refund unless you verify it
                 is necessary.
               </p>
@@ -556,7 +650,7 @@ function OrdersTab() {
   return (
     <div className="mt-6 space-y-4">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <label className="flex flex-col gap-1 text-sm font-medium" htmlFor="orders-filter-date">
+        <label className="flex flex-col gap-1 text-base font-medium" htmlFor="orders-filter-date">
           Delivery date
           <Input
             id="orders-filter-date"
@@ -565,7 +659,7 @@ function OrdersTab() {
             onChange={(event) => setDeliveryDate(event.target.value)}
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium" htmlFor="orders-filter-burger">
+        <label className="flex flex-col gap-1 text-base font-medium" htmlFor="orders-filter-burger">
           Burger
           <Select value={burger} onValueChange={setBurger}>
             <SelectTrigger id="orders-filter-burger">
@@ -578,7 +672,7 @@ function OrdersTab() {
             </SelectContent>
           </Select>
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium" htmlFor="orders-filter-area">
+        <label className="flex flex-col gap-1 text-base font-medium" htmlFor="orders-filter-area">
           Campus / area
           <Select value={deliveryArea} onValueChange={setDeliveryArea}>
             <SelectTrigger id="orders-filter-area">
@@ -594,7 +688,7 @@ function OrdersTab() {
             </SelectContent>
           </Select>
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium" htmlFor="orders-filter-meal">
+        <label className="flex flex-col gap-1 text-base font-medium" htmlFor="orders-filter-meal">
           Delivery time
           <Select value={mealSlot} onValueChange={setMealSlot}>
             <SelectTrigger id="orders-filter-meal">
@@ -610,7 +704,10 @@ function OrdersTab() {
             </SelectContent>
           </Select>
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium" htmlFor="orders-filter-payment">
+        <label
+          className="flex flex-col gap-1 text-base font-medium"
+          htmlFor="orders-filter-payment"
+        >
           Payment status
           <Select value={paymentStatus} onValueChange={setPaymentStatus}>
             <SelectTrigger id="orders-filter-payment">
@@ -627,17 +724,17 @@ function OrdersTab() {
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
-          <p className="text-sm font-semibold text-primary">Orders loaded</p>
+          <p className="text-base font-semibold text-primary">Orders loaded</p>
           <p className="mt-1 font-display text-3xl text-foreground">{data.length}</p>
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="mt-2 text-base text-muted-foreground">
             Signature: {totalBurgerCounts.signature} · Double burgers:{" "}
             {totalBurgerCounts.doubleTrouble}
           </p>
         </div>
         <div className="rounded-xl border border-accent/50 bg-accent/20 p-4">
-          <p className="text-sm font-semibold text-accent-foreground">Orders matching filters</p>
+          <p className="text-base font-semibold text-accent-foreground">Orders matching filters</p>
           <p className="mt-1 font-display text-3xl text-foreground">{filteredOrders.length}</p>
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="mt-2 text-base text-muted-foreground">
             Signature: {filteredBurgerCounts.signature} · Double burgers:{" "}
             {filteredBurgerCounts.doubleTrouble}
           </p>
@@ -668,9 +765,9 @@ function OrdersTab() {
           {filteredOrders.map((o) => {
             const pay = Array.isArray(o.payments) ? o.payments[0] : o.payments;
             return (
-              <li key={o.id} className="rounded-xl border border-border bg-card p-4 text-sm">
+              <li key={o.id} className="rounded-xl border border-border bg-card p-4 text-base">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="font-display text-lg uppercase">{o.order_number}</span>
+                  <span className="font-display text-xl uppercase">{o.order_number}</span>
                   <span className="flex gap-1">
                     {!(pay?.status === "rejected") && (
                       <StatusBadge status={o.cancelled_at ? "cancelled" : o.status} />
@@ -682,13 +779,13 @@ function OrdersTab() {
                   {o.order_items.map((i) => `${i.quantity}× ${i.name}`).join(", ")} ·{" "}
                   {formatETB(o.total)}
                 </p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-base text-muted-foreground">
                   Delivery: {formatDeliveryDate(o.delivery_date)} · {o.meal_slot} ·{" "}
                   {o.delivery_area_name} — {o.address} · {o.contact_name} {o.contact_phone} ·{" "}
                   {format(new Date(o.created_at), "d MMM HH:mm")}
                 </p>
                 {o.notes && (
-                  <p className="mt-1 text-sm">
+                  <p className="mt-1 text-base">
                     <span className="text-muted-foreground">Customer notes:</span> {o.notes}
                   </p>
                 )}
@@ -730,7 +827,7 @@ function OrderingTab() {
     <div className="mt-6 grid gap-6 md:grid-cols-2">
       <section className="rounded-xl border border-border bg-card p-4">
         <h2 className="text-2xl">Delivery dates</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="mt-1 text-base text-muted-foreground">
           Customers can choose the next two weekdays. Close dates here to pause orders; manage
           availability up to five business days ahead.
         </p>
@@ -744,7 +841,7 @@ function OrderingTab() {
           <ul className="mt-4 space-y-3">
             {(schedule.data ?? []).map((day) => (
               <li key={day.delivery_date} className="flex items-center justify-between gap-3">
-                <span className="text-sm">{formatDeliveryDate(day.delivery_date)}</span>
+                <span className="text-base">{formatDeliveryDate(day.delivery_date)}</span>
                 <Switch
                   checked={day.is_open}
                   disabled={setDeliveryDateOpen.isPending}
@@ -759,7 +856,7 @@ function OrderingTab() {
 
       <section className="rounded-xl border border-border bg-card p-4">
         <h2 className="text-2xl">Meal times</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="mt-1 text-base text-muted-foreground">
           Turn breakfast, lunch, or dinner ordering on or off.
         </p>
         {meals.isLoading ? (
@@ -772,7 +869,7 @@ function OrderingTab() {
           <ul className="mt-4 space-y-3">
             {(meals.data ?? []).map((meal) => (
               <li key={meal.slot} className="flex items-center justify-between gap-3">
-                <span className="text-sm">{meal.label}</span>
+                <span className="text-base">{meal.label}</span>
                 <Switch
                   checked={meal.available}
                   disabled={toggleAvailability.isPending}
@@ -863,7 +960,7 @@ function ToggleList({
       <h3 className="text-xl">{title}</h3>
       <ul className="mt-3 space-y-2">
         {rows.map((r) => (
-          <li key={r.id} className="flex items-center justify-between gap-2 text-sm">
+          <li key={r.id} className="flex items-center justify-between gap-2 text-base">
             <span className="min-w-0 flex-1">{r.label}</span>
             <div className="flex shrink-0 items-center gap-1">
               {r.item && <OwnerMenuForm item={r.item} />}

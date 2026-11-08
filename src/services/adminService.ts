@@ -5,7 +5,7 @@ export async function getAdminPayments() {
   const { data, error } = await supabase
     .from("payments")
     .select(
-      "*, orders(order_number, contact_name, contact_phone, delivery_area_name, address, notes, delivery_date, meal_slot, created_at)",
+      "*, orders(id, order_number, contact_name, contact_phone, delivery_area_name, address, notes, delivery_date, meal_slot, created_at, status, cancelled_at)",
     )
     .eq("status", "unverified")
     .order("submitted_at", { ascending: true, nullsFirst: false });
@@ -27,6 +27,13 @@ export async function reviewPayment(paymentId: string, approve: boolean, note: s
     _note: note,
   });
   if (error) throw error;
+}
+
+export async function confirmExternalPayment(orderId: string) {
+  const { error } = await supabase.rpc("confirm_external_payment", {
+    _order_id: orderId,
+  });
+  if (error) throw new Error(`Could not confirm external payment: ${error.message}`);
 }
 
 export async function getAdminOrders() {

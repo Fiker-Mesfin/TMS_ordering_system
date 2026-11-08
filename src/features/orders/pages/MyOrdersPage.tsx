@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { Button } from "@/shared/ui/button";
 import { StatusBadge } from "@/shared/feedback/status-badge";
 import { formatDeliveryDate } from "@/lib/delivery";
+import { hasSubmittedPaymentReference } from "@/lib/payment";
 import { useAuth } from "@/lib/auth";
 import { formatETB } from "@/lib/shop";
 import { useMyOrders } from "../hooks/useOrders";
@@ -51,7 +52,8 @@ export function MyOrdersPage() {
                           ? "Confirmed — delivery scheduled"
                           : pay?.status === "rejected"
                             ? "Payment needs attention — open to resubmit"
-                            : pay?.submitted_at
+                            : pay?.submitted_at ||
+                                hasSubmittedPaymentReference(pay?.transaction_ref)
                               ? "Payment submitted — waiting for verification"
                               : "Payment required — open to complete your order"}
                     </p>

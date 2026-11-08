@@ -7,6 +7,7 @@ import {
   getAdminMenuItems,
   getAdminOrders,
   getAdminPayments,
+  confirmExternalPayment,
   reviewPayment,
   setDeliveryAreaEnabled,
   setDeliveryDateOpen,
@@ -32,7 +33,10 @@ export function useAdminPayments() {
   return useQuery({
     queryKey: ["admin-payments"],
     queryFn: getAdminPayments,
-    refetchInterval: 60_000,
+    refetchInterval: 5_000,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
+    refetchOnMount: "always",
   });
 }
 
@@ -130,6 +134,20 @@ export function useReviewPayment() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["admin-payments"] });
       await queryClient.invalidateQueries({ queryKey: ["admin-orders"] });
+    },
+  });
+}
+
+export function useConfirmExternalPayment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: confirmExternalPayment,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin-payments"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin-orders"] }),
+        queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+      ]);
     },
   });
 }

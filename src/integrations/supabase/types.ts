@@ -535,6 +535,10 @@ export type Database = {
         Args: { _approve: boolean; _note: string; _payment_id: string };
         Returns: undefined;
       };
+      confirm_external_payment: {
+        Args: { _order_id: string };
+        Returns: undefined;
+      };
       submit_payment_proof: {
         Args: {
           _method: string;

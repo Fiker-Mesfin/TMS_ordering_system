@@ -21,6 +21,7 @@ import {
   AlertDialogTrigger,
 } from "@/shared/ui/alert-dialog";
 import { formatDeliveryDate } from "@/lib/delivery";
+import { hasSubmittedPaymentReference } from "@/lib/payment";
 import { useAuth } from "@/lib/auth";
 import { formatETB, PAYMENT_ACCOUNTS } from "@/lib/shop";
 import type { Tables } from "@/integrations/supabase/types";
@@ -43,10 +44,11 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
   if (!order)
     return <p className="px-4 py-12 text-center text-muted-foreground">Order not found.</p>;
   const pay = Array.isArray(order.payments) ? order.payments[0] : order.payments;
-  const paymentSubmitted = Boolean(pay?.submitted_at);
+  const paymentSubmitted =
+    Boolean(pay?.submitted_at) || hasSubmittedPaymentReference(pay?.transaction_ref);
   const paymentVerified = pay?.status === "verified";
   const paymentRejected = pay?.status === "rejected";
-  const waiting = pay?.status === "unverified" && Boolean(pay?.submitted_at);
+  const waiting = pay?.status === "unverified" && paymentSubmitted;
   const latestRefund = [...order.refund_requests].sort((a, b) =>
     b.created_at.localeCompare(a.created_at),
   )[0];
@@ -508,7 +510,9 @@ function PaymentSection({
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [showResubmit, setShowResubmit] = useState(false);
-  const waiting = payment.status === "unverified" && !!payment.submitted_at;
+  const waiting =
+    payment.status === "unverified" &&
+    (Boolean(payment.submitted_at) || hasSubmittedPaymentReference(payment.transaction_ref));
 
   async function submit(e: React.FormEvent): Promise<void> {
     e.preventDefault();
@@ -596,7 +600,7 @@ function PaymentSection({
               <span className="text-muted-foreground">
                 {payment.submitted_at
                   ? format(new Date(payment.submitted_at), "d MMM yyyy, HH:mm")
-                  : "—"}
+                  : "Submission date unavailable"}
               </span>
             </div>
           </div>

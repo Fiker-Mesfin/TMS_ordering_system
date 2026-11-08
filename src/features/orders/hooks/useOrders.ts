@@ -70,7 +70,12 @@ export function useSubmitPaymentProof(orderId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: submitPaymentProof,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["order", orderId] }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["order", orderId] }),
+        queryClient.invalidateQueries({ queryKey: ["my-orders"] }),
+      ]);
+    },
   });
 }
 
