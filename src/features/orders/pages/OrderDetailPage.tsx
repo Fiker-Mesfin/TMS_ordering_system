@@ -59,29 +59,29 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
   const deliveryScheduleMessage = `Your burgers are scheduled for delivery on ${formatDeliveryDate(order.delivery_date)} during ${order.meal_slot}.`;
   const progressSteps = order.cancelled_at
     ? [
-      { label: "Order placed", complete: true },
-      ...(paymentSubmitted
-        ? [{ label: "Refund received", complete: true }]
-        : [{ label: "Order cancelled", complete: true }]),
-    ]
+        { label: "Order placed", complete: true },
+        ...(paymentSubmitted
+          ? [{ label: "Refund received", complete: true }]
+          : [{ label: "Order cancelled", complete: true }]),
+      ]
     : [
-      { label: "Order placed", complete: true },
-      {
-        label: paymentSubmitted ? "Payment submitted" : "Payment needed",
-        complete: paymentSubmitted,
-      },
-      {
-        label: paymentVerified
-          ? "Payment verified"
-          : paymentRejected
-            ? "Payment rejected"
-            : waiting
-              ? "Waiting for verification"
-              : "Verification",
-        complete: paymentVerified,
-      },
-      { label: "Delivery scheduled", complete: order.status === "confirmed" },
-    ];
+        { label: "Order placed", complete: true },
+        {
+          label: paymentSubmitted ? "Payment submitted" : "Payment needed",
+          complete: paymentSubmitted,
+        },
+        {
+          label: paymentVerified
+            ? "Payment verified"
+            : paymentRejected
+              ? "Payment rejected"
+              : waiting
+                ? "Waiting for verification"
+                : "Verification",
+          complete: paymentVerified,
+        },
+        { label: "Delivery scheduled", complete: order.status === "confirmed" },
+      ];
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-4 py-12">
@@ -151,12 +151,13 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
           {progressSteps.map((step, index) => (
             <li
               key={step.label}
-              className={`rounded-lg border p-3 text-base leading-snug ${step.complete
+              className={`rounded-lg border p-3 text-base leading-snug ${
+                step.complete
                   ? "border-success/50 bg-success/10 text-success"
                   : paymentRejected && index === 2
                     ? "border-destructive/50 bg-destructive/10 text-destructive"
                     : "border-border text-muted-foreground"
-                }`}
+              }`}
             >
               <span className="block text-sm font-semibold uppercase tracking-wide">
                 Step {index + 1}
@@ -204,6 +205,11 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
           Deliver to {order.delivery_area_name} — {order.address} · {order.contact_name},{" "}
           {order.contact_phone}
         </p>
+        {order.notes && (
+          <p className="text-sm leading-relaxed sm:text-base">
+            <span className="text-muted-foreground">Delivery notes:</span> {order.notes}
+          </p>
+        )}
       </section>
 
       {order.status === "confirmed" ? (
@@ -327,8 +333,7 @@ function OrderDeliveryDateEditor({ orderId }: { orderId: string }) {
   const [selectedDate, setSelectedDate] = useState("");
   const canReschedule = options?.[0]?.can_reschedule ?? false;
   const datedOptions = options?.filter(
-    (option): option is typeof option & { delivery_date: string } =>
-      option.delivery_date !== null,
+    (option): option is typeof option & { delivery_date: string } => option.delivery_date !== null,
   );
 
   async function saveDate() {
@@ -560,10 +565,7 @@ function PaymentSection({
           : (PAYMENT_ACCOUNTS.find((a) => a.id === payment.method)?.label ?? "Bank Transfer");
 
     return (
-      <section
-        id="payment"
-        className="space-y-5 rounded-xl border border-border bg-card p-5"
-      >
+      <section id="payment" className="space-y-5 rounded-xl border border-border bg-card p-5">
         <div>
           <h2 className="text-3xl">Payment under review</h2>
           <p className="mt-1 text-base leading-relaxed text-muted-foreground">
@@ -579,9 +581,7 @@ function PaymentSection({
           <div className="space-y-3">
             <div className="flex items-center justify-between text-base">
               <span className="text-muted-foreground">Reference</span>
-              <span className="font-mono font-bold text-foreground">
-                {payment.transaction_ref}
-              </span>
+              <span className="font-mono font-bold text-foreground">{payment.transaction_ref}</span>
             </div>
             <div className="flex items-center justify-between text-base">
               <span className="text-muted-foreground">Payment method</span>
@@ -635,12 +635,7 @@ function PaymentSection({
               </span>
             </p>
           </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowResubmit(false)}
-          >
+          <Button type="button" variant="ghost" size="sm" onClick={() => setShowResubmit(false)}>
             Cancel
           </Button>
         </div>

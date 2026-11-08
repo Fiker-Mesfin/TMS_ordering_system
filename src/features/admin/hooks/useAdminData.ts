@@ -29,7 +29,11 @@ import {
 } from "@/services/refundService";
 
 export function useAdminPayments() {
-  return useQuery({ queryKey: ["admin-payments"], queryFn: getAdminPayments });
+  return useQuery({
+    queryKey: ["admin-payments"],
+    queryFn: getAdminPayments,
+    refetchInterval: 60_000,
+  });
 }
 
 export function useAdminRefundRequests() {

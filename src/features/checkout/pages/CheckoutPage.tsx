@@ -174,28 +174,41 @@ export function CheckoutPage() {
             <p role="alert" className="text-base text-destructive">
               Could not load delivery dates: {deliveryScheduleError.message}
             </p>
-          ) : openDeliveryDays.length > 0 ? (
-            <RadioGroup
-              value={deliveryDate}
-              onValueChange={setDeliveryDate}
-              required
-              aria-label="Delivery date"
-              className="grid gap-3 sm:grid-cols-2"
-            >
-              {openDeliveryDays.map((day) => (
-                <Label
-                  key={day.delivery_date}
-                  htmlFor={`delivery-date-${day.delivery_date}`}
-                  className="flex cursor-pointer items-center gap-3 rounded-md border border-border bg-card p-3"
-                >
-                  <RadioGroupItem
-                    id={`delivery-date-${day.delivery_date}`}
-                    value={day.delivery_date}
-                  />
-                  {formatDeliveryDate(day.delivery_date)}
-                </Label>
-              ))}
-            </RadioGroup>
+          ) : deliveryDays.length > 0 ? (
+            <>
+              <RadioGroup
+                value={deliveryDate}
+                onValueChange={setDeliveryDate}
+                required
+                aria-label="Delivery date"
+                className="grid gap-3 sm:grid-cols-2"
+              >
+                {deliveryDays.map((day) => (
+                  <Label
+                    key={day.delivery_date}
+                    htmlFor={`delivery-date-${day.delivery_date}`}
+                    className={`flex items-center gap-3 rounded-md border border-border bg-card p-3 ${
+                      day.is_open ? "cursor-pointer" : "cursor-not-allowed opacity-60"
+                    }`}
+                  >
+                    <RadioGroupItem
+                      id={`delivery-date-${day.delivery_date}`}
+                      value={day.delivery_date}
+                      disabled={!day.is_open}
+                    />
+                    {formatDeliveryDate(day.delivery_date)}
+                    {!day.is_open && (
+                      <span className="ml-auto text-sm text-muted-foreground">Closed</span>
+                    )}
+                  </Label>
+                ))}
+              </RadioGroup>
+              {openDeliveryDays.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  No delivery dates are currently available. Please check again later.
+                </p>
+              )}
+            </>
           ) : (
             <p className="rounded-md border border-destructive/50 p-3 text-base text-destructive">
               No delivery dates are currently available. Please check again later.
@@ -242,7 +255,8 @@ export function CheckoutPage() {
             </p>
           )}
           <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-            We&rsquo;ll deliver your burger right on time! No long waits, no worrying about when your food will arrive. Just sit back, relax, and enjoy.
+            We&rsquo;ll deliver your burger right on time! No long waits, no worrying about when
+            your food will arrive. Just sit back, relax, and enjoy.
           </p>
         </fieldset>
         <fieldset className="space-y-2">

@@ -19,6 +19,11 @@ import {
 } from "@/services/refundService";
 import { OwnerMenuForm } from "../components/OwnerMenuForm";
 import { downloadAdminOrdersXlsx } from "../components/adminOrdersExport";
+import {
+  getAdminBurgerCounts,
+  matchesAdminBurgerFilter,
+  type AdminBurgerFilter,
+} from "../lib/adminOrderFilters";
 import type { MenuItem } from "@/types/menu";
 import {
   useAdminCatalog,
@@ -78,8 +83,10 @@ export function AdminPage() {
 }
 
 function PaymentsTab() {
-  const { data = [], isLoading } = useAdminPayments();
+  const { data = [], isLoading, isError, error } = useAdminPayments();
   const createReceiptUrl = useReceiptUrl();
+  const submittedPayments = data.filter(hasSubmittedReference);
+  const awaitingPayments = data.filter((payment) => !hasSubmittedReference(payment));
 
   async function openReceipt(path: string) {
     try {
@@ -91,14 +98,40 @@ function PaymentsTab() {
   }
 
   if (isLoading) return <p className="mt-6 text-muted-foreground">Loading…</p>;
-  if (data.length === 0) return <p className="mt-6 text-muted-foreground">No payments waiting.</p>;
+  if (isError)
+    return (
+      <p role="alert" className="mt-6 text-destructive">
+        Could not load payments: {error instanceof Error ? error.message : String(error)}
+      </p>
+    );
 
   return (
-    <ul className="mt-6 space-y-3">
-      {data.map((p) => (
-        <PaymentRow key={p.id} p={p} onReceipt={openReceipt} />
-      ))}
-    </ul>
+    <div className="mt-6 grid gap-6 lg:grid-cols-2">
+      <section>
+        <h2 className="text-2xl">Submitted references ({submittedPayments.length})</h2>
+        {submittedPayments.length === 0 ? (
+          <p className="mt-3 text-muted-foreground">No submitted references need review.</p>
+        ) : (
+          <ul className="mt-3 space-y-3">
+            {submittedPayments.map((payment) => (
+              <PaymentRow key={payment.id} p={payment} onReceipt={openReceipt} />
+            ))}
+          </ul>
+        )}
+      </section>
+      <section>
+        <h2 className="text-2xl">Awaiting customer payment details ({awaitingPayments.length})</h2>
+        {awaitingPayments.length === 0 ? (
+          <p className="mt-3 text-muted-foreground">No orders are waiting for payment details.</p>
+        ) : (
+          <ul className="mt-3 space-y-3">
+            {awaitingPayments.map((payment) => (
+              <UnsubmittedPaymentRow key={payment.id} p={payment} />
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
   );
 }
 
@@ -114,13 +147,27 @@ type PayRow = {
     contact_name: string;
     contact_phone: string;
     delivery_area_name: string;
+    address: string;
+    notes: string | null;
     delivery_date: string;
     meal_slot: string;
     created_at: string;
   } | null;
 };
 
-function PaymentRow({ p, onReceipt }: { p: PayRow; onReceipt: (path: string) => void }) {
+function hasSubmittedReference(
+  payment: PayRow,
+): payment is PayRow & { submitted_at: string; transaction_ref: string } {
+  return Boolean(payment.submitted_at && payment.transaction_ref?.trim());
+}
+
+function PaymentRow({
+  p,
+  onReceipt,
+}: {
+  p: PayRow & { submitted_at: string; transaction_ref: string };
+  onReceipt: (path: string) => void;
+}) {
   const [note, setNote] = useState("");
   const reviewMutation = useReviewPayment();
   const busy = reviewMutation.isPending;
@@ -142,52 +189,78 @@ function PaymentRow({ p, onReceipt }: { p: PayRow; onReceipt: (path: string) => 
           </p>
           {p.orders && (
             <p className="text-xs text-muted-foreground">
-              Delivery: {formatDeliveryDate(p.orders.delivery_date)} · {p.orders.meal_slot}
+              Delivery: {formatDeliveryDate(p.orders.delivery_date)} · {p.orders.meal_slot} ·{" "}
+              {p.orders.address}
+            </p>
+          )}
+          {p.orders?.notes && (
+            <p className="mt-1 text-sm">
+              <span className="text-muted-foreground">Customer notes:</span> {p.orders.notes}
             </p>
           )}
         </div>
         <p className="text-lg font-semibold text-primary">{formatETB(p.amount)}</p>
       </div>
-      {p.submitted_at ? (
-        <div className="mt-3 text-sm">
-          <p>
-            <span className="text-muted-foreground">Method:</span> {p.method?.toUpperCase()} ·{" "}
-            <span className="text-muted-foreground">Ref:</span>{" "}
-            <span className="font-mono">{p.transaction_ref}</span> ·{" "}
-            <span className="text-muted-foreground">
-              {format(new Date(p.submitted_at), "d MMM HH:mm")}
-            </span>
-          </p>
-          {p.receipt_path && (
-            <Button
-              variant="link"
-              className="h-auto px-0"
-              onClick={() => onReceipt(p.receipt_path!)}
-            >
-              View receipt
-            </Button>
-          )}
-        </div>
-      ) : (
-        <p className="mt-3 text-sm text-muted-foreground">
-          Customer hasn't submitted a reference yet.
+      <div className="mt-3 text-sm">
+        <p>
+          <span className="text-muted-foreground">Method:</span> {p.method?.toUpperCase()} ·{" "}
+          <span className="text-muted-foreground">Ref:</span>{" "}
+          <span className="font-mono">{p.transaction_ref}</span> ·{" "}
+          <span className="text-muted-foreground">
+            {format(new Date(p.submitted_at), "d MMM HH:mm")}
+          </span>
         </p>
-      )}
-      <div className="mt-3 flex flex-wrap gap-2">
+        {p.receipt_path && (
+          <Button variant="link" className="h-auto px-0" onClick={() => onReceipt(p.receipt_path!)}>
+            View receipt
+          </Button>
+        )}
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
         <Input
-          className="max-w-xs"
+          className="min-w-0 max-w-xs flex-1 basis-48"
           placeholder="Note (optional, shown to customer)"
           value={note}
           onChange={(e) => setNote(e.target.value)}
           maxLength={200}
         />
-        <Button disabled={busy} onClick={() => review(true)}>
-          Verify
-        </Button>
-        <Button disabled={busy} variant="destructive" onClick={() => review(false)}>
-          Reject
-        </Button>
+        <div className="flex shrink-0 gap-2">
+          <Button disabled={busy} onClick={() => review(true)}>
+            Verify
+          </Button>
+          <Button disabled={busy} variant="destructive" onClick={() => review(false)}>
+            Reject
+          </Button>
+        </div>
       </div>
+    </li>
+  );
+}
+
+function UnsubmittedPaymentRow({ p }: { p: PayRow }) {
+  return (
+    <li className="rounded-xl border border-border bg-card p-4">
+      <div className="flex flex-wrap justify-between gap-3">
+        <div>
+          <p className="font-display text-xl uppercase">{p.orders?.order_number}</p>
+          <p className="text-xs text-muted-foreground">
+            {p.orders?.contact_name} · {p.orders?.contact_phone} · {p.orders?.delivery_area_name}
+          </p>
+          {p.orders && (
+            <p className="text-xs text-muted-foreground">
+              Delivery: {formatDeliveryDate(p.orders.delivery_date)} · {p.orders.meal_slot} ·{" "}
+              {p.orders.address}
+            </p>
+          )}
+          {p.orders?.notes && (
+            <p className="mt-1 text-sm">
+              <span className="text-muted-foreground">Customer notes:</span> {p.orders.notes}
+            </p>
+          )}
+        </div>
+        <p className="text-lg font-semibold text-primary">{formatETB(p.amount)}</p>
+      </div>
+      <p className="mt-3 text-sm text-muted-foreground">No payment reference has been submitted.</p>
     </li>
   );
 }
@@ -433,9 +506,9 @@ function RefundRequestRow({ request }: { request: RefundAdminRow }) {
 }
 
 function OrdersTab() {
-  const { data = [] } = useAdminOrders();
+  const { data = [], isLoading, isError, error } = useAdminOrders();
   const [deliveryDate, setDeliveryDate] = useState("");
-  const [burger, setBurger] = useState("all");
+  const [burger, setBurger] = useState<AdminBurgerFilter>("all");
   const [deliveryArea, setDeliveryArea] = useState("all");
   const [mealSlot, setMealSlot] = useState("all");
   const [paymentStatus, setPaymentStatus] = useState("all");
@@ -458,29 +531,19 @@ function OrdersTab() {
       paymentStatus === "all" || (payment?.status ?? "unverified") === paymentStatus;
     const matchesBurger =
       burger === "all" ||
-      order.order_items.some((item) => {
-        const name = item.name.trim().toLowerCase();
-        return burger === "signature"
-          ? name === "tms signature burger"
-          : name === "tms double trouble";
-      });
+      order.order_items.some((item) => matchesAdminBurgerFilter(item.name, burger));
     return matchesDate && matchesArea && matchesMeal && matchesBurger && matchesPayment;
   });
-  function getBurgerCounts(orders: typeof data) {
-    return orders.reduce(
-      (counts, order) => {
-        for (const item of order.order_items) {
-          const name = item.name.trim().toLowerCase();
-          if (name === "tms signature burger") counts.signature += item.quantity;
-          if (name === "tms double trouble") counts.doubleTrouble += item.quantity;
-        }
-        return counts;
-      },
-      { signature: 0, doubleTrouble: 0 },
+  const totalBurgerCounts = getAdminBurgerCounts(data);
+  const filteredBurgerCounts = getAdminBurgerCounts(filteredOrders);
+
+  if (isLoading) return <p className="mt-6 text-muted-foreground">Loading all orders…</p>;
+  if (isError)
+    return (
+      <p role="alert" className="mt-6 text-destructive">
+        Could not load orders: {error instanceof Error ? error.message : String(error)}
+      </p>
     );
-  }
-  const totalBurgerCounts = getBurgerCounts(data);
-  const filteredBurgerCounts = getBurgerCounts(filteredOrders);
 
   function clearOrderFilters() {
     setDeliveryDate("");
@@ -511,7 +574,7 @@ function OrdersTab() {
             <SelectContent>
               <SelectItem value="all">All burgers</SelectItem>
               <SelectItem value="signature">TM's Signature Burger</SelectItem>
-              <SelectItem value="double">TM's Double Trouble</SelectItem>
+              <SelectItem value="double">Double burgers</SelectItem>
             </SelectContent>
           </Select>
         </label>
@@ -567,7 +630,7 @@ function OrdersTab() {
           <p className="text-sm font-semibold text-primary">Orders loaded</p>
           <p className="mt-1 font-display text-3xl text-foreground">{data.length}</p>
           <p className="mt-2 text-sm text-muted-foreground">
-            Signature: {totalBurgerCounts.signature} · Double Trouble:{" "}
+            Signature: {totalBurgerCounts.signature} · Double burgers:{" "}
             {totalBurgerCounts.doubleTrouble}
           </p>
         </div>
@@ -575,7 +638,7 @@ function OrdersTab() {
           <p className="text-sm font-semibold text-accent-foreground">Orders matching filters</p>
           <p className="mt-1 font-display text-3xl text-foreground">{filteredOrders.length}</p>
           <p className="mt-2 text-sm text-muted-foreground">
-            Signature: {filteredBurgerCounts.signature} · Double Trouble:{" "}
+            Signature: {filteredBurgerCounts.signature} · Double burgers:{" "}
             {filteredBurgerCounts.doubleTrouble}
           </p>
         </div>
@@ -624,6 +687,11 @@ function OrdersTab() {
                   {o.delivery_area_name} — {o.address} · {o.contact_name} {o.contact_phone} ·{" "}
                   {format(new Date(o.created_at), "d MMM HH:mm")}
                 </p>
+                {o.notes && (
+                  <p className="mt-1 text-sm">
+                    <span className="text-muted-foreground">Customer notes:</span> {o.notes}
+                  </p>
+                )}
               </li>
             );
           })}

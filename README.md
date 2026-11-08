@@ -78,6 +78,10 @@ SQL Editor:
     delivery areas.
 13. `0012_update_brand_name.sql` — updates the seeded menu item to use the TM's
     brand name.
+14. `0013_expire_unpaid_orders.sql` — allows payment review only after a
+    reference is submitted, preserves reminders, and automatically cancels
+    unpaid orders after their delivery period ends. This uses `pg_cron` to check
+    every five minutes and sends the customer an in-app cancellation notice.
 
 The first account created after applying the core migration is assigned the
 admin role by the database trigger. Sign in with that account to manage the
@@ -111,10 +115,13 @@ callback URL shown in Supabase's Google-provider settings.
   refund has not arrived.
 - Receive in-app reminders for unpaid orders and payment-status notifications.
   Admins receive in-app notifications when payment proof or refund requests
-  need review.
+  need review. Orders without submitted payment details are cancelled after
+  their delivery period ends, with an in-app cancellation notice.
 - Use the owner area to manage the menu, delivery areas, meal/date availability,
-  and payment reviews. Filter orders by delivery date, burger, campus, meal
-  time, and payment status, then export matching orders to Excel.
+  and payment reviews. Submitted references appear in the review queue; orders
+  still awaiting payment details appear separately without review actions.
+  Filter all loaded orders by delivery date, burger, campus, meal time, and
+  payment status, then export matching orders to Excel.
 - Switch between dark and light themes; browse the About page.
 
 Payment account information displayed to customers is configured in

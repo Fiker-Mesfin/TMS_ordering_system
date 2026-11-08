@@ -5,7 +5,7 @@ export async function getAdminPayments() {
   const { data, error } = await supabase
     .from("payments")
     .select(
-      "*, orders(order_number, contact_name, contact_phone, delivery_area_name, delivery_date, meal_slot, created_at)",
+      "*, orders(order_number, contact_name, contact_phone, delivery_area_name, address, notes, delivery_date, meal_slot, created_at)",
     )
     .eq("status", "unverified")
     .order("submitted_at", { ascending: true, nullsFirst: false });
@@ -30,13 +30,25 @@ export async function reviewPayment(paymentId: string, approve: boolean, note: s
 }
 
 export async function getAdminOrders() {
-  const { data, error } = await supabase
-    .from("orders")
-    .select("*, order_items(name, quantity), payments(status)")
-    .order("created_at", { ascending: false })
-    .limit(200);
+  const pageSize = 200;
+  const loadPage = (from: number) =>
+    supabase
+      .from("orders")
+      .select("*, order_items(name, quantity), payments(status)")
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(from, from + pageSize - 1);
+  const { data: firstPage, error } = await loadPage(0);
   if (error) throw error;
-  return data;
+
+  const orders = [...firstPage];
+  for (let from = pageSize; ; from += pageSize) {
+    const { data, error: pageError } = await loadPage(from);
+    if (pageError) throw pageError;
+    orders.push(...data);
+    if (data.length < pageSize) break;
+  }
+  return orders;
 }
 
 export async function getAdminMenuItems() {
