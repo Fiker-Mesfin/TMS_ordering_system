@@ -10,11 +10,6 @@ export type AdminOrderExportRow = {
   address: string;
   notes: string | null;
   order_items: { name: string; quantity: number }[];
-  total: number;
-  status: string;
-  cancelled_at: string | null;
-  created_at: string;
-  payments: { status: string }[] | { status: string } | null;
 };
 
 function columnName(index: number) {
@@ -86,29 +81,18 @@ export function buildAdminOrdersXlsx(orders: AdminOrderExportRow[]) {
       "Delivery location preference",
       "Building, hall, room, or landmark",
       "Items",
-      "Order total (ETB)",
-      "Payment status",
-      "Order status",
-      "Order placed at",
     ],
-    ...orders.map((order) => {
-      const payment = Array.isArray(order.payments) ? order.payments[0] : order.payments;
-      return [
-        order.order_number,
-        order.contact_name,
-        order.contact_phone,
-        order.delivery_area_name,
-        order.delivery_date,
-        order.meal_slot,
-        order.address,
-        order.notes ?? "",
-        order.order_items.map((item) => `${item.quantity} x ${item.name}`).join("; "),
-        order.total,
-        payment?.status ?? "unverified",
-        order.cancelled_at ? "cancelled" : order.status,
-        order.created_at,
-      ];
-    }),
+    ...orders.map((order) => [
+      order.order_number,
+      order.contact_name,
+      order.contact_phone,
+      order.delivery_area_name,
+      order.delivery_date,
+      order.meal_slot,
+      order.address,
+      order.notes ?? "",
+      order.order_items.map((item) => `${item.quantity} x ${item.name}`).join("; "),
+    ]),
   ];
 
   return workbookBytes("Orders", rows);

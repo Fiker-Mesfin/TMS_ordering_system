@@ -15,15 +15,10 @@ const adminOrder: AdminOrderExportRow = {
   address: "Inside campus / Gebi",
   notes: "Building 4, room 12",
   order_items: [{ name: "TM's Signature Burger", quantity: 2 }],
-  total: 700,
-  status: "active",
-  cancelled_at: null,
-  created_at: "2026-11-02T10:00:00.000Z",
-  payments: [{ status: "verified" }],
 };
 
 describe("admin orders Excel export", () => {
-  it("exports all order delivery details and payment status to Excel", () => {
+  it("exports order delivery details without totals or status columns", () => {
     const files = unzipSync(buildAdminOrdersXlsx([adminOrder]));
     const sheet = files["xl/worksheets/sheet1.xml"];
     if (!sheet) throw new Error("Expected orders worksheet was not created");
@@ -41,6 +36,9 @@ describe("admin orders Excel export", () => {
     expect(xml).toContain("AAU FBE");
     expect(xml).toContain("Inside campus / Gebi");
     expect(xml).toContain("Building 4, room 12");
-    expect(xml).toContain("verified");
+    expect(xml).not.toContain("Order total (ETB)");
+    expect(xml).not.toContain("Payment status");
+    expect(xml).not.toContain("Order status");
+    expect(xml).not.toContain("Order placed at");
   });
 });
