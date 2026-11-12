@@ -36,6 +36,7 @@ import {
   matchesAdminBurgerFilter,
   type AdminBurgerFilter,
 } from "../lib/adminOrderFilters";
+import { getOrderItemExtraNames } from "@/features/orders/lib/orderItems";
 import type { MenuItem } from "@/types/menu";
 import {
   useAdminCatalog,
@@ -776,8 +777,13 @@ function OrdersTab() {
                   </span>
                 </div>
                 <p className="mt-1 text-muted-foreground">
-                  {o.order_items.map((i) => `${i.quantity}× ${i.name}`).join(", ")} ·{" "}
-                  {formatETB(o.total)}
+                  {o.order_items
+                    .map((item) => {
+                      const extras = getOrderItemExtraNames(item.extras);
+                      return `${item.quantity}× ${item.name}${extras.length > 0 ? ` + ${extras.join(", ")}` : ""}`;
+                    })
+                    .join(", ")}{" "}
+                  · {formatETB(o.total)}
                 </p>
                 <p className="text-base text-muted-foreground">
                   Delivery: {formatDeliveryDate(o.delivery_date)} · {o.meal_slot} ·{" "}

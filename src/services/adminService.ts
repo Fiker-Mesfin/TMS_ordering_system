@@ -41,7 +41,7 @@ export async function getAdminOrders() {
   const loadPage = (from: number) =>
     supabase
       .from("orders")
-      .select("*, order_items(name, quantity), payments(status)")
+      .select("*, order_items(name, quantity, extras), payments(status)")
       .order("created_at", { ascending: false })
       .order("id", { ascending: false })
       .range(from, from + pageSize - 1);

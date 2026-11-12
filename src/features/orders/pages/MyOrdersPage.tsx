@@ -7,6 +7,7 @@ import { hasSubmittedPaymentReference } from "@/lib/payment";
 import { useAuth } from "@/lib/auth";
 import { formatETB } from "@/lib/shop";
 import { useMyOrders } from "../hooks/useOrders";
+import { getOrderItemExtraNames } from "../lib/orderItems";
 
 export function MyOrdersPage() {
   const { user } = useAuth();
@@ -43,6 +44,17 @@ export function MyOrdersPage() {
                     <p className="text-sm text-muted-foreground sm:text-base">
                       Delivery: {formatDeliveryDate(o.delivery_date)} · {o.meal_slot}
                     </p>
+                    <ul className="mt-1 text-sm text-muted-foreground sm:text-base">
+                      {o.order_items.map((item, index) => {
+                        const extras = getOrderItemExtraNames(item.extras);
+                        return (
+                          <li key={`${item.name}-${index}`}>
+                            {item.quantity} × {item.name}
+                            {extras.length > 0 && ` + ${extras.join(", ")}`}
+                          </li>
+                        );
+                      })}
+                    </ul>
                     <p
                       className={`mt-1 text-sm font-medium leading-snug sm:text-base ${pay?.status === "rejected" ? "text-destructive" : pay?.status === "verified" ? "text-success" : "text-primary"}`}
                     >

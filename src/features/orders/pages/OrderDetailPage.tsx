@@ -34,8 +34,7 @@ import {
   useUploadPaymentReceipt,
 } from "../hooks/useOrders";
 import { RefundSection } from "../components/RefundSection";
-
-type Extra = { name: string; price: number };
+import { getOrderItemExtraNames } from "../lib/orderItems";
 
 export function OrderDetailPage({ orderId }: { orderId: string }) {
   const { data: order, isLoading } = useOrderDetails(orderId);
@@ -179,19 +178,22 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
 
       <section className="rounded-xl border border-border bg-card p-5">
         <ul className="space-y-2 text-base">
-          {order.order_items.map((it) => (
-            <li key={it.id} className="flex justify-between gap-2">
-              <span>
-                {it.quantity} × {it.name}
-                {(it.extras as Extra[]).length > 0 && (
-                  <span className="block text-sm text-muted-foreground sm:text-base">
-                    + {(it.extras as Extra[]).map((e) => e.name).join(", ")}
-                  </span>
-                )}
-              </span>
-              <span>{formatETB(it.line_total)}</span>
-            </li>
-          ))}
+          {order.order_items.map((item) => {
+            const extras = getOrderItemExtraNames(item.extras);
+            return (
+              <li key={item.id} className="flex justify-between gap-2">
+                <span>
+                  {item.quantity} × {item.name}
+                  {extras.length > 0 && (
+                    <span className="block text-sm text-muted-foreground sm:text-base">
+                      + {extras.join(", ")}
+                    </span>
+                  )}
+                </span>
+                <span>{formatETB(item.line_total)}</span>
+              </li>
+            );
+          })}
         </ul>
         <div className="mt-4 space-y-1 border-t border-border pt-4 text-base">
           <div className="flex justify-between">
