@@ -1,4 +1,6 @@
 import { strToU8, zipSync } from "fflate";
+import type { Json } from "@/integrations/supabase/types";
+import { getOrderItemExtraNames } from "@/features/orders/lib/orderItems";
 
 export type AdminOrderExportRow = {
   order_number: string;
@@ -9,7 +11,7 @@ export type AdminOrderExportRow = {
   meal_slot: string;
   address: string;
   notes: string | null;
-  order_items: { name: string; quantity: number }[];
+  order_items: { name: string; quantity: number; extras?: Json }[];
 };
 
 function columnName(index: number) {
@@ -91,7 +93,12 @@ export function buildAdminOrdersXlsx(orders: AdminOrderExportRow[]) {
       order.meal_slot,
       order.address,
       order.notes ?? "",
-      order.order_items.map((item) => `${item.quantity} x ${item.name}`).join("; "),
+      order.order_items
+        .map((item) => {
+          const extras = getOrderItemExtraNames(item.extras);
+          return `${item.quantity} x ${item.name}${extras.length > 0 ? ` + ${extras.join(", ")}` : ""}`;
+        })
+        .join("; "),
     ]),
   ];
 

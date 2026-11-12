@@ -14,7 +14,13 @@ const adminOrder: AdminOrderExportRow = {
   meal_slot: "lunch",
   address: "Inside campus / Gebi",
   notes: "Building 4, room 12",
-  order_items: [{ name: "TM's Signature Burger", quantity: 2 }],
+  order_items: [
+    {
+      name: "TM's Signature Burger",
+      quantity: 2,
+      extras: [{ id: "sauce-id", name: "Burger sauce", price: 35 }],
+    },
+  ],
 };
 
 describe("admin orders Excel export", () => {
@@ -36,6 +42,7 @@ describe("admin orders Excel export", () => {
     expect(xml).toContain("AAU FBE");
     expect(xml).toContain("Inside campus / Gebi");
     expect(xml).toContain("Building 4, room 12");
+    expect(xml).toContain("2 x TM&apos;s Signature Burger + Burger sauce");
     expect(xml).not.toContain("Order total (ETB)");
     expect(xml).not.toContain("Payment status");
     expect(xml).not.toContain("Order status");
