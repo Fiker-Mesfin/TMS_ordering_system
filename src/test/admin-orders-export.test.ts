@@ -36,7 +36,8 @@ describe("admin orders Excel export", () => {
     expect(xml).toContain("Delivery date");
     expect(xml).toContain("Meal time");
     expect(xml).toContain("Delivery location preference");
-    expect(xml).toContain("Building, hall, room, or landmark");
+    expect(xml).toContain("Other notes (optional)");
+    expect(xml).not.toContain("Building, hall, room, or landmark");
     expect(xml).toContain("Student Example");
     expect(xml).toContain("0909841353");
     expect(xml).toContain("AAU FBE");

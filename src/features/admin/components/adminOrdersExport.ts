@@ -81,7 +81,7 @@ export function buildAdminOrdersXlsx(orders: AdminOrderExportRow[]) {
       "Delivery date",
       "Meal time",
       "Delivery location preference",
-      "Building, hall, room, or landmark",
+      "Other notes (optional)",
       "Items",
     ],
     ...orders.map((order) => [
