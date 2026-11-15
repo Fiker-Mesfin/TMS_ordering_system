@@ -3,6 +3,7 @@ import { useState } from "react";
 import { z } from "zod";
 import { toast } from "sonner";
 import { Button } from "@/shared/ui/button";
+import { Checkbox } from "@/shared/ui/checkbox";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/shared/ui/radio-group";
@@ -10,7 +11,7 @@ import { RequiredMark } from "@/shared/ui/required-mark";
 import { Textarea } from "@/shared/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { useCart, lineUnit } from "@/lib/cart";
-import { formatDeliveryDate } from "@/lib/delivery";
+import { formatDeliveryDate, getDeliveryMeetingPoints } from "@/lib/delivery";
 import { formatETB, PHONE_REGEX } from "@/lib/shop";
 import {
   useAvailableMealSlots,
@@ -32,8 +33,9 @@ const schema = z.object({
     .trim()
     .regex(PHONE_REGEX, "Enter a valid Ethiopian phone (e.g. 0911234567)"),
   areaId: z.string().uuid("Choose a delivery area"),
-  deliveryLocation: z.enum(["Inside campus / Gebi", "At the doors"], {
-    message: "Choose where to meet your delivery",
+  meetingPoint: z.string().min(1, "Choose an outside-door meeting point"),
+  deliveryAgreement: z.literal(true, {
+    message: "Confirm that you agree to meet outside at the selected gate",
   }),
   deliveryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a delivery date"),
   mealSlot: z.string().min(1, "Choose a meal time"),
@@ -44,7 +46,8 @@ export function CheckoutPage() {
   const { lines, estimate, clear } = useCart();
   const navigate = useNavigate();
   const [areaId, setAreaId] = useState("");
-  const [deliveryLocation, setDeliveryLocation] = useState("");
+  const [meetingPoint, setMeetingPoint] = useState("");
+  const [deliveryAgreement, setDeliveryAgreement] = useState(false);
   const [deliveryDate, setDeliveryDate] = useState("");
   const [mealSlot, setMealSlot] = useState("");
   const { data: areas = [] } = useEnabledDeliveryAreas();
@@ -60,6 +63,8 @@ export function CheckoutPage() {
   } = useAvailableMealSlots();
   const orderMutation = usePlaceOrder();
   const openDeliveryDays = deliveryDays.filter((day) => day.is_open);
+  const selectedArea = areas.find((area) => area.id === areaId);
+  const meetingPoints = selectedArea ? getDeliveryMeetingPoints(selectedArea.name) : [];
 
   if (lines.length === 0) {
     return (
@@ -79,7 +84,8 @@ export function CheckoutPage() {
       contactName: fd.get("contactName"),
       contactPhone: fd.get("contactPhone"),
       areaId,
-      deliveryLocation,
+      meetingPoint,
+      deliveryAgreement,
       deliveryDate,
       mealSlot,
       notes: (fd.get("notes") as string) || undefined,
@@ -89,6 +95,11 @@ export function CheckoutPage() {
       return;
     }
     const d = parsed.data;
+    const selectedArea = areas.find((area) => area.id === d.areaId);
+    if (!selectedArea || !getDeliveryMeetingPoints(selectedArea.name).includes(d.meetingPoint)) {
+      toast.error("Choose a valid meeting point for your campus");
+      return;
+    }
     if (!deliveryDays.some((day) => day.delivery_date === d.deliveryDate && day.is_open)) {
       toast.error("Orders for that delivery date are closed. Choose another date.");
       return;
@@ -105,7 +116,7 @@ export function CheckoutPage() {
           extraIds: line.extras.map((extra) => extra.id),
         })),
         areaId: d.areaId,
-        address: d.deliveryLocation,
+        address: d.meetingPoint,
         contactName: d.contactName,
         contactPhone: d.contactPhone,
         deliveryDate: d.deliveryDate,
@@ -148,7 +159,16 @@ export function CheckoutPage() {
           <Label htmlFor="delivery-area">
             Delivery area (AAU campus) <RequiredMark />
           </Label>
-          <Select value={areaId} onValueChange={setAreaId}>
+          <Select
+            value={areaId}
+            onValueChange={(value) => {
+              setAreaId(value);
+              const selectedArea = areas.find((area) => area.id === value);
+              const points = getDeliveryMeetingPoints(selectedArea?.name ?? "");
+              setMeetingPoint(points.length === 1 ? (points[0] ?? "") : "");
+              setDeliveryAgreement(false);
+            }}
+          >
             <SelectTrigger id="delivery-area" aria-required="true">
               <SelectValue placeholder="Choose your campus" />
             </SelectTrigger>
@@ -261,37 +281,51 @@ export function CheckoutPage() {
         </fieldset>
         <fieldset className="space-y-2">
           <legend className="text-base font-medium leading-snug">
-            Delivery location <RequiredMark />
+            Outside-door delivery <RequiredMark />
           </legend>
-          <RadioGroup
-            value={deliveryLocation}
-            onValueChange={setDeliveryLocation}
-            required
-            aria-label="Delivery location"
-            className="grid gap-3 sm:grid-cols-2"
-          >
-            {(["Inside campus / Gebi", "At the doors"] as const).map((location) => (
-              <Label
-                key={location}
-                htmlFor={`delivery-location-${location === "At the doors" ? "doors" : "inside"}`}
-                className="flex cursor-pointer items-center gap-3 rounded-md border border-border bg-card p-3"
-              >
-                <RadioGroupItem
-                  id={`delivery-location-${location === "At the doors" ? "doors" : "inside"}`}
-                  value={location}
-                />
-                {location}
-              </Label>
-            ))}
-          </RadioGroup>
+          {areaId && meetingPoints.length > 1 && (
+            <RadioGroup
+              value={meetingPoint}
+              onValueChange={setMeetingPoint}
+              aria-label="Choose an outside-door meeting point"
+              className="grid gap-3 sm:grid-cols-2"
+            >
+              {meetingPoints.map((point) => (
+                <Label
+                  key={point}
+                  htmlFor={`meeting-point-${point}`}
+                  className="flex cursor-pointer items-center gap-3 rounded-md border border-border bg-card p-3"
+                >
+                  <RadioGroupItem id={`meeting-point-${point}`} value={point} />
+                  {point}
+                </Label>
+              ))}
+            </RadioGroup>
+          )}
+          {areaId && meetingPoints.length > 0 && (
+            <Label
+              htmlFor="delivery-agreement"
+              className="flex cursor-pointer items-start gap-3 rounded-md border border-border bg-card p-3"
+            >
+              <Checkbox
+                id="delivery-agreement"
+                checked={deliveryAgreement}
+                onCheckedChange={(checked) => setDeliveryAgreement(checked === true)}
+              />
+              <span>
+                I agree to meet outside at{" "}
+                {meetingPoints.length > 1 ? meetingPoint || "the selected gate" : meetingPoints[0]}.
+              </span>
+            </Label>
+          )}
         </fieldset>
         <div className="space-y-1.5">
-          <Label htmlFor="notes">Building, hall, room, or landmark (optional)</Label>
+          <Label htmlFor="notes">Other notes (optional)</Label>
           <Textarea
             id="notes"
             name="notes"
             maxLength={500}
-            placeholder="For example: building, hall, room, gate, or a nearby landmark"
+            placeholder="Any other requests about your menu or order?"
           />
         </div>
         <Button
