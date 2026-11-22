@@ -21,6 +21,14 @@ export async function getEnabledDeliveryAreas() {
   return data;
 }
 
+export async function getMenuAvailability(deliveryDate: string) {
+  const { data, error } = await supabase.rpc("get_menu_availability", {
+    _delivery_date: deliveryDate,
+  });
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function placeOrder(input: PlaceOrderInput) {
   const { data, error } = await supabase.rpc("place_order", {
     _items: input.items.map((item) => ({

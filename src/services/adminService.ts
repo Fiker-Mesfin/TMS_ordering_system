@@ -112,6 +112,31 @@ export async function setDeliveryDateOpen(deliveryDate: string, isOpen: boolean)
   if (error) throw error;
 }
 
+export type AdminMenuDateAvailability = {
+  menu_item_id: string;
+  delivery_date: string;
+  is_available: boolean;
+};
+
+export async function getAdminMenuDateAvailability(): Promise<AdminMenuDateAvailability[]> {
+  const { data, error } = await supabase.rpc("get_admin_menu_availability");
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function setMenuItemDateAvailable(
+  menuItemId: string,
+  deliveryDate: string,
+  isAvailable: boolean,
+) {
+  const { error } = await supabase.rpc("set_menu_item_date_available", {
+    _menu_item_id: menuItemId,
+    _delivery_date: deliveryDate,
+    _is_available: isAvailable,
+  });
+  if (error) throw error;
+}
+
 export async function createMenuItem(input: {
   name: string;
   description: string;

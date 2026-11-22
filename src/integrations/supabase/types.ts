@@ -50,6 +50,27 @@ export type Database = {
         };
         Relationships: [];
       };
+      menu_item_date_availability: {
+        Row: {
+          delivery_date: string;
+          is_available: boolean;
+          menu_item_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          delivery_date: string;
+          is_available?: boolean;
+          menu_item_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          delivery_date?: string;
+          is_available?: boolean;
+          menu_item_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       menu_extras: {
         Row: {
           available: boolean;
@@ -481,6 +502,26 @@ export type Database = {
       get_admin_delivery_schedule: {
         Args: Record<PropertyKey, never>;
         Returns: { delivery_date: string; is_open: boolean }[];
+      };
+      get_admin_menu_availability: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          menu_item_id: string;
+          delivery_date: string;
+          is_available: boolean;
+        }[];
+      };
+      get_menu_availability: {
+        Args: { _delivery_date: string };
+        Returns: { menu_item_id: string; is_available: boolean }[];
+      };
+      set_menu_item_date_available: {
+        Args: {
+          _menu_item_id: string;
+          _delivery_date: string;
+          _is_available: boolean;
+        };
+        Returns: undefined;
       };
       get_order_reschedule_options: {
         Args: { _order_id: string };

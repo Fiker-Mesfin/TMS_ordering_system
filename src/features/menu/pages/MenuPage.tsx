@@ -80,7 +80,7 @@ export function MenuPage() {
                       disabled={!item.available}
                       onClick={() => setSelected(item)}
                     >
-                      {item.available ? "Add to cart" : "Sold out"}
+                      {item.available ? "Add to cart" : "Closed"}
                     </Button>
                   </div>
                 </div>

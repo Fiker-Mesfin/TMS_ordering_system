@@ -43,6 +43,7 @@ import {
   useAdminOrderingAvailability,
   useAdminOrders,
   useAdminPayments,
+  useAdminMenuDateAvailability,
   useAdminRefundRequests,
   useCompletePaymentRefund,
   useConfirmExternalPayment,
@@ -51,6 +52,7 @@ import {
   useReviewRefundRequest,
   useResolveRefundFollowUp,
   useSetDeliveryDateOpen,
+  useSetMenuItemDateAvailable,
   useToggleAvailability,
 } from "../hooks/useAdminData";
 
@@ -806,6 +808,9 @@ function OrdersTab() {
 
 function OrderingTab() {
   const { schedule, meals } = useAdminOrderingAvailability();
+  const { items } = useAdminCatalog();
+  const menuAvailability = useAdminMenuDateAvailability();
+  const setMenuItemDateAvailable = useSetMenuItemDateAvailable();
   const toggleAvailability = useToggleAvailability();
   const setDeliveryDateOpen = useSetDeliveryDateOpen();
 
@@ -829,65 +834,162 @@ function OrderingTab() {
     }
   }
 
-  return (
-    <div className="mt-6 grid gap-6 md:grid-cols-2">
-      <section className="rounded-xl border border-border bg-card p-4">
-        <h2 className="text-2xl">Delivery dates</h2>
-        <p className="mt-1 text-base text-muted-foreground">
-          Customers can choose the next two weekdays. Close dates here to pause orders; manage
-          availability up to five business days ahead.
-        </p>
-        {schedule.isLoading ? (
-          <p className="mt-3 text-sm text-muted-foreground">Loading delivery dates…</p>
-        ) : schedule.error ? (
-          <p role="alert" className="mt-3 text-sm text-destructive">
-            Could not load delivery dates: {schedule.error.message}
-          </p>
-        ) : (
-          <ul className="mt-4 space-y-3">
-            {(schedule.data ?? []).map((day) => (
-              <li key={day.delivery_date} className="flex items-center justify-between gap-3">
-                <span className="text-base">{formatDeliveryDate(day.delivery_date)}</span>
-                <Switch
-                  checked={day.is_open}
-                  disabled={setDeliveryDateOpen.isPending}
-                  aria-label={`Accept orders for ${formatDeliveryDate(day.delivery_date)}`}
-                  onCheckedChange={(open) => toggleDate(day.delivery_date, open)}
-                />
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+  async function toggleMenuForDate(
+    menuItemId: string,
+    menuItemName: string,
+    deliveryDate: string,
+    isAvailable: boolean,
+  ) {
+    try {
+      await setMenuItemDateAvailable.mutateAsync({
+        menuItemId,
+        deliveryDate,
+        isAvailable,
+      });
+      toast.success(
+        `${menuItemName} ${isAvailable ? "opened" : "closed"} for ${formatDeliveryDate(deliveryDate)}`,
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update menu availability");
+    }
+  }
 
-      <section className="rounded-xl border border-border bg-card p-4">
-        <h2 className="text-2xl">Meal times</h2>
+  const availabilityRows = menuAvailability.data ?? [];
+  const deliveryDates = (schedule.data ?? []).map((day) => day.delivery_date);
+
+  return (
+    <>
+      <div className="mt-6 grid gap-6 md:grid-cols-2">
+        <section className="rounded-xl border border-border bg-card p-4">
+          <h2 className="text-2xl">Delivery dates</h2>
+          <p className="mt-1 text-base text-muted-foreground">
+            Customers can choose the next two weekdays. Close dates here to pause orders; manage
+            availability up to five business days ahead.
+          </p>
+          {schedule.isLoading ? (
+            <p className="mt-3 text-sm text-muted-foreground">Loading delivery dates…</p>
+          ) : schedule.error ? (
+            <p role="alert" className="mt-3 text-sm text-destructive">
+              Could not load delivery dates: {schedule.error.message}
+            </p>
+          ) : (
+            <ul className="mt-4 space-y-3">
+              {(schedule.data ?? []).map((day) => (
+                <li key={day.delivery_date} className="flex items-center justify-between gap-3">
+                  <span className="text-base">{formatDeliveryDate(day.delivery_date)}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">
+                      {day.is_open ? "Open" : "Closed"}
+                    </span>
+                    <Switch
+                      checked={day.is_open}
+                      disabled={setDeliveryDateOpen.isPending}
+                      aria-label={`${day.is_open ? "Close" : "Open"} orders for ${formatDeliveryDate(day.delivery_date)}`}
+                      onCheckedChange={(open) => toggleDate(day.delivery_date, open)}
+                    />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="rounded-xl border border-border bg-card p-4">
+          <h2 className="text-2xl">Meal times</h2>
+          <p className="mt-1 text-base text-muted-foreground">
+            Turn breakfast, lunch, or dinner ordering on or off.
+          </p>
+          {meals.isLoading ? (
+            <p className="mt-3 text-sm text-muted-foreground">Loading meal times…</p>
+          ) : meals.error ? (
+            <p role="alert" className="mt-3 text-sm text-destructive">
+              Could not load meal times: {meals.error.message}
+            </p>
+          ) : (
+            <ul className="mt-4 space-y-3">
+              {(meals.data ?? []).map((meal) => (
+                <li key={meal.slot} className="flex items-center justify-between gap-3">
+                  <span className="text-base">{meal.label}</span>
+                  <Switch
+                    checked={meal.available}
+                    disabled={toggleAvailability.isPending}
+                    aria-label={`Accept ${meal.label.toLowerCase()} orders`}
+                    onCheckedChange={(available) => toggleMeal(meal.slot, available, meal.label)}
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
+
+      <section className="mt-6 rounded-xl border border-border bg-card p-4">
+        <h2 className="text-2xl">Menu availability by day</h2>
         <p className="mt-1 text-base text-muted-foreground">
-          Turn breakfast, lunch, or dinner ordering on or off.
+          Each switch controls only the selected burger and delivery date. It does not change global
+          availability or other dates.
         </p>
-        {meals.isLoading ? (
-          <p className="mt-3 text-sm text-muted-foreground">Loading meal times…</p>
-        ) : meals.error ? (
-          <p role="alert" className="mt-3 text-sm text-destructive">
-            Could not load meal times: {meals.error.message}
+        {menuAvailability.isLoading || items.isLoading ? (
+          <p className="mt-4 text-sm text-muted-foreground">Loading menu availability…</p>
+        ) : menuAvailability.error || items.isError ? (
+          <p role="alert" className="mt-4 text-sm text-destructive">
+            Could not load menu availability:{" "}
+            {menuAvailability.error instanceof Error
+              ? menuAvailability.error.message
+              : items.error instanceof Error
+                ? items.error.message
+                : "Please try again."}
           </p>
         ) : (
-          <ul className="mt-4 space-y-3">
-            {(meals.data ?? []).map((meal) => (
-              <li key={meal.slot} className="flex items-center justify-between gap-3">
-                <span className="text-base">{meal.label}</span>
-                <Switch
-                  checked={meal.available}
-                  disabled={toggleAvailability.isPending}
-                  aria-label={`Accept ${meal.label.toLowerCase()} orders`}
-                  onCheckedChange={(available) => toggleMeal(meal.slot, available, meal.label)}
-                />
-              </li>
-            ))}
-          </ul>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="py-2 pr-4 text-left font-semibold">Burger</th>
+                  {deliveryDates.map((date) => (
+                    <th key={date} className="min-w-36 px-2 py-2 text-center font-semibold">
+                      {formatDeliveryDate(date)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {(items.data ?? []).map((item) => (
+                  <tr key={item.id} className="border-b border-border/60 last:border-0">
+                    <td className="py-3 pr-4 font-medium">{item.name}</td>
+                    {deliveryDates.map((date) => {
+                      const row = availabilityRows.find(
+                        (availability) =>
+                          availability.menu_item_id === item.id &&
+                          availability.delivery_date === date,
+                      );
+                      const isAvailable = row?.is_available ?? true;
+                      return (
+                        <td key={date} className="px-2 py-3 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <span className="text-muted-foreground">
+                              {isAvailable ? "Open" : "Closed"}
+                            </span>
+                            <Switch
+                              checked={isAvailable}
+                              disabled={setMenuItemDateAvailable.isPending}
+                              aria-label={`${isAvailable ? "Close" : "Open"} ${item.name} for ${formatDeliveryDate(date)}`}
+                              onCheckedChange={(available) =>
+                                toggleMenuForDate(item.id, item.name, date, available)
+                              }
+                            />
+                          </div>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
-    </div>
+    </>
   );
 }
 
@@ -922,16 +1024,22 @@ function MenuTab() {
             {itemsQuery.error instanceof Error ? itemsQuery.error.message : "Please try again."}
           </p>
         ) : (
-          <ToggleList
-            title="Burgers"
-            rows={items.map((i) => ({
-              id: i.id,
-              label: `${i.name} · ${formatETB(i.price)}`,
-              on: i.available,
-              item: i,
-            }))}
-            onToggle={(id, v) => toggle("menu_items", id, v)}
-          />
+          <section>
+            <p className="mb-2 text-sm text-muted-foreground">
+              Global burger availability applies to every date. To close a burger for one date, use
+              Order availability → Menu availability by day.
+            </p>
+            <ToggleList
+              title="Global burger availability"
+              rows={items.map((i) => ({
+                id: i.id,
+                label: `${i.name} · ${formatETB(i.price)}`,
+                on: i.available,
+                item: i,
+              }))}
+              onToggle={(id, v) => toggle("menu_items", id, v)}
+            />
+          </section>
         )}
         <ToggleList
           title="Extras"

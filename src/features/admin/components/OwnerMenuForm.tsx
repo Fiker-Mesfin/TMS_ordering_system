@@ -216,10 +216,13 @@ export function OwnerMenuForm({ item }: { item?: MenuItem }) {
               </div>
               <div className="flex items-center justify-between">
                 <label htmlFor="burger-available" className="text-sm font-semibold">
-                  Available to order
+                  Globally available
                 </label>
                 <Switch id="burger-available" checked={available} onCheckedChange={setAvailable} />
               </div>
+              <p className="text-sm text-muted-foreground">
+                Applies to every delivery date. Use Order availability to change one date only.
+              </p>
             </fieldset>
             {error && (
               <p role="alert" className="text-sm text-destructive">

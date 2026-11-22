@@ -9,10 +9,12 @@ import {
   getAdminPayments,
   confirmExternalPayment,
   reviewPayment,
+  getAdminMenuDateAvailability,
   setDeliveryAreaEnabled,
   setDeliveryDateOpen,
   setMealSlotAvailability,
   setMenuExtraAvailability,
+  setMenuItemDateAvailable,
   setMenuItemAvailability,
   updateMenuItem,
 } from "@/services/adminService";
@@ -63,6 +65,27 @@ export function useAdminOrderingAvailability() {
   });
   const meals = useQuery({ queryKey: mealSlotsQueryKey, queryFn: getMealSlots });
   return { schedule, meals };
+}
+
+export function useAdminMenuDateAvailability() {
+  return useQuery({
+    queryKey: ["admin-menu-date-availability"],
+    queryFn: getAdminMenuDateAvailability,
+  });
+}
+
+export function useSetMenuItemDateAvailable() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { menuItemId: string; deliveryDate: string; isAvailable: boolean }) =>
+      setMenuItemDateAvailable(input.menuItemId, input.deliveryDate, input.isAvailable),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin-menu-date-availability"] }),
+        queryClient.invalidateQueries({ queryKey: ["menu-availability"] }),
+      ]);
+    },
+  });
 }
 
 export function useToggleAvailability() {

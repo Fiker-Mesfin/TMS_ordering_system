@@ -89,6 +89,8 @@ SQL Editor:
     verified outside the app when no payment reference was submitted.
 17. `0016_reconcile_confirmed_external_payment.sql` — lets an owner reconcile an
     already-confirmed order whose payment record is still unverified.
+18. `0017_menu_item_date_availability.sql` — adds independent per-burger,
+    per-delivery-date availability controls and validates them during checkout.
 
 The first account created after applying the core migration is assigned the
 admin role by the database trigger. Sign in with that account to manage the

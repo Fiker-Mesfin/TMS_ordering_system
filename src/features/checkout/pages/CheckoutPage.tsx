@@ -17,6 +17,7 @@ import {
   useAvailableMealSlots,
   useDeliverySchedule,
   useEnabledDeliveryAreas,
+  useMenuAvailability,
   usePlaceOrder,
 } from "../hooks/useCheckout";
 
@@ -50,6 +51,11 @@ export function CheckoutPage() {
   const [deliveryAgreement, setDeliveryAgreement] = useState(false);
   const [deliveryDate, setDeliveryDate] = useState("");
   const [mealSlot, setMealSlot] = useState("");
+  const {
+    data: menuAvailability = [],
+    isLoading: menuAvailabilityLoading,
+    error: menuAvailabilityError,
+  } = useMenuAvailability(deliveryDate);
   const { data: areas = [] } = useEnabledDeliveryAreas();
   const {
     data: deliveryDays = [],
@@ -65,6 +71,13 @@ export function CheckoutPage() {
   const openDeliveryDays = deliveryDays.filter((day) => day.is_open);
   const selectedArea = areas.find((area) => area.id === areaId);
   const meetingPoints = selectedArea ? getDeliveryMeetingPoints(selectedArea.name) : [];
+  const unavailableCartLines = lines.filter((line) =>
+    menuAvailability.some(
+      (availability) =>
+        availability.menu_item_id === line.menuItemId && availability.is_available === false,
+    ),
+  );
+  const hasUnavailableCartLine = unavailableCartLines.length > 0;
 
   if (lines.length === 0) {
     return (
@@ -106,6 +119,16 @@ export function CheckoutPage() {
     }
     if (!mealSlots.some((slot) => slot.slot === d.mealSlot && slot.available)) {
       toast.error("That meal time is no longer available. Choose another.");
+      return;
+    }
+    const unavailableLine = lines.find((line) =>
+      menuAvailability.some(
+        (availability) =>
+          availability.menu_item_id === line.menuItemId && availability.is_available === false,
+      ),
+    );
+    if (unavailableLine) {
+      toast.error(`${unavailableLine.name} is closed for this delivery date.`);
       return;
     }
     try {
@@ -333,16 +356,24 @@ export function CheckoutPage() {
           className="w-full bg-flame shadow-flame"
           disabled={
             orderMutation.isPending ||
+            (Boolean(deliveryDate) && menuAvailabilityLoading) ||
+            Boolean(menuAvailabilityError) ||
             datesLoading ||
             mealsLoading ||
             !!deliveryScheduleError ||
             !!mealSlotsError ||
             openDeliveryDays.length === 0 ||
-            mealSlots.length === 0
+            mealSlots.length === 0 ||
+            hasUnavailableCartLine
           }
         >
           {orderMutation.isPending ? "Placing order…" : "Place order"}
         </Button>
+        {deliveryDate && menuAvailabilityError && (
+          <p role="alert" className="text-sm text-destructive">
+            Could not check menu availability: {menuAvailabilityError.message}
+          </p>
+        )}
       </form>
 
       <aside className="h-fit rounded-xl border border-border bg-card p-5">
@@ -352,6 +383,11 @@ export function CheckoutPage() {
             <li key={l.key} className="flex justify-between gap-2">
               <span>
                 {l.quantity} × {l.name}
+                {deliveryDate && unavailableCartLines.some((line) => line.key === l.key) && (
+                  <span className="block text-sm font-semibold text-destructive">
+                    Closed for this delivery date
+                  </span>
+                )}
                 {l.extras.length > 0 && (
                   <span className="block text-sm text-muted-foreground sm:text-base">
                     + {l.extras.map((e) => e.name).join(", ")}

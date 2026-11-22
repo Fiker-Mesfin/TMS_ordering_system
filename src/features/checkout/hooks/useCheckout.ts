@@ -1,5 +1,9 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { getEnabledDeliveryAreas, placeOrder } from "@/services/checkoutService";
+import {
+  getEnabledDeliveryAreas,
+  getMenuAvailability,
+  placeOrder,
+} from "@/services/checkoutService";
 import { getDeliverySchedule, getMealSlots } from "@/services/deliveryService";
 import { deliveryScheduleQueryKey, mealSlotsQueryKey } from "@/lib/delivery";
 
@@ -19,6 +23,14 @@ export function useAvailableMealSlots() {
   return useQuery({
     queryKey: mealSlotsQueryKey,
     queryFn: async () => (await getMealSlots()).filter((slot) => slot.available),
+  });
+}
+
+export function useMenuAvailability(deliveryDate: string) {
+  return useQuery({
+    queryKey: ["menu-availability", deliveryDate],
+    queryFn: () => getMenuAvailability(deliveryDate),
+    enabled: Boolean(deliveryDate),
   });
 }
 
